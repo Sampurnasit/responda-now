@@ -292,8 +292,10 @@ function IncidentDetail({ incident }: { incident: Incident }) {
               </div>
               <span
                 className="font-mono text-[9px] font-bold tracking-wider"
-                style={{ color: STATUS_META[assigned.status as never]?.color ?? "hsl(var(--accent))" }}
+                style={{ color: "hsl(var(--accent))" }}
               >
+                ● {assigned.status.toUpperCase()}
+              </span>
                 ● {assigned.status.toUpperCase()}
               </span>
             </div>
