@@ -296,8 +296,6 @@ function IncidentDetail({ incident }: { incident: Incident }) {
               >
                 ● {assigned.status.toUpperCase()}
               </span>
-                ● {assigned.status.toUpperCase()}
-              </span>
             </div>
           </div>
         )}
