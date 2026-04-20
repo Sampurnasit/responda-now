@@ -14,7 +14,92 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      incidents: {
+        Row: {
+          ai_summary: string | null
+          assigned_volunteer_id: string | null
+          created_at: string
+          id: string
+          lat: number
+          lng: number
+          message: string
+          reporter_label: string
+          severity: number
+          status: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          ai_summary?: string | null
+          assigned_volunteer_id?: string | null
+          created_at?: string
+          id?: string
+          lat: number
+          lng: number
+          message: string
+          reporter_label?: string
+          severity?: number
+          status?: string
+          type?: string
+          updated_at?: string
+        }
+        Update: {
+          ai_summary?: string | null
+          assigned_volunteer_id?: string | null
+          created_at?: string
+          id?: string
+          lat?: number
+          lng?: number
+          message?: string
+          reporter_label?: string
+          severity?: number
+          status?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "incidents_assigned_volunteer_id_fkey"
+            columns: ["assigned_volunteer_id"]
+            isOneToOne: false
+            referencedRelation: "volunteers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      volunteers: {
+        Row: {
+          avatar_color: string
+          created_at: string
+          id: string
+          lat: number
+          lng: number
+          name: string
+          skills: string[]
+          status: string
+        }
+        Insert: {
+          avatar_color?: string
+          created_at?: string
+          id?: string
+          lat: number
+          lng: number
+          name: string
+          skills?: string[]
+          status?: string
+        }
+        Update: {
+          avatar_color?: string
+          created_at?: string
+          id?: string
+          lat?: number
+          lng?: number
+          name?: string
+          skills?: string[]
+          status?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
