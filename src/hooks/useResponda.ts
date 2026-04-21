@@ -20,7 +20,7 @@ export function useIncidents() {
       });
 
     const channel = supabase
-      .channel("incidents-realtime")
+      .channel(`incidents-realtime-${Math.random().toString(36).slice(2)}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "incidents" },
@@ -68,7 +68,7 @@ export function useVolunteers() {
       });
 
     const channel = supabase
-      .channel("volunteers-realtime")
+      .channel(`volunteers-realtime-${Math.random().toString(36).slice(2)}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "volunteers" },
