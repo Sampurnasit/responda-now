@@ -104,7 +104,11 @@ export type Database = {
           id: string
           lat: number
           lng: number
+          location_type: string | null
           message: string
+          people_affected: number | null
+          priority_label: string | null
+          priority_score: number | null
           reporter_label: string
           severity: number
           status: string
@@ -118,7 +122,11 @@ export type Database = {
           id?: string
           lat: number
           lng: number
+          location_type?: string | null
           message: string
+          people_affected?: number | null
+          priority_label?: string | null
+          priority_score?: number | null
           reporter_label?: string
           severity?: number
           status?: string
@@ -132,7 +140,11 @@ export type Database = {
           id?: string
           lat?: number
           lng?: number
+          location_type?: string | null
           message?: string
+          people_affected?: number | null
+          priority_label?: string | null
+          priority_score?: number | null
           reporter_label?: string
           severity?: number
           status?: string
