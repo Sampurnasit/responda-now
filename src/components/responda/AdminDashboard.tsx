@@ -350,6 +350,13 @@ function IncidentDetail({ incident }: { incident: Incident }) {
             </div>
           </div>
         )}
+
+        <div className="border-t border-border pt-3">
+          <div className="mb-2 flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+            <Activity className="h-3 w-3" /> Incident Timeline
+          </div>
+          <IncidentTimeline incidentId={incident.id} />
+        </div>
       </div>
 
       {incident.status !== "resolved" && (
