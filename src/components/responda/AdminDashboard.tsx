@@ -8,10 +8,12 @@ import {
   TYPE_META,
   SEVERITY_META,
   STATUS_META,
+  PRIORITY_META,
+  LOCATION_META,
   recommendVolunteers,
 } from "@/lib/responda";
 import { supabase } from "@/integrations/supabase/client";
-import { Activity, CheckCircle2, Clock, MapPin, Radio, Sparkles, Users, Zap } from "lucide-react";
+import { Activity, CheckCircle2, Clock, Flame, MapPin, Radio, Sparkles, Users, Zap } from "lucide-react";
 import { toast } from "sonner";
 
 export function AdminDashboard() {
