@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useIncidents, useVolunteers } from "@/hooks/useResponda";
 import { CrisisMap } from "./CrisisMap";
+import { IncidentTimeline } from "./IncidentTimeline";
 import {
   Incident,
   TYPE_META,
@@ -9,7 +10,7 @@ import {
   recommendVolunteers,
 } from "@/lib/responda";
 import { supabase } from "@/integrations/supabase/client";
-import { CheckCircle2, Clock, MapPin, Sparkles, Users, Zap } from "lucide-react";
+import { Activity, CheckCircle2, Clock, MapPin, Sparkles, Users, Zap } from "lucide-react";
 import { toast } from "sonner";
 
 export function AdminDashboard() {
