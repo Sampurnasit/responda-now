@@ -29,7 +29,15 @@ export function AdminDashboard() {
   const active = incidents.filter((i) => i.status !== "resolved");
   const resolved = incidents.filter((i) => i.status === "resolved").length;
   const availableVols = volunteers.filter((v) => v.status === "available").length;
-  const critical = active.filter((i) => i.severity >= 4).length;
+  const critical = active.filter((i) => (i.priority_label === "Critical") || i.severity >= 4).length;
+
+  // Sort incidents by priority score (desc), unresolved first
+  const sortedIncidents = [...incidents].sort((a, b) => {
+    const aResolved = a.status === "resolved" ? 1 : 0;
+    const bResolved = b.status === "resolved" ? 1 : 0;
+    if (aResolved !== bResolved) return aResolved - bResolved;
+    return (b.priority_score ?? 0) - (a.priority_score ?? 0);
+  });
 
   return (
     <div className="grid h-[calc(100vh-3.5rem)] grid-cols-12 gap-3 p-3">
@@ -55,7 +63,7 @@ export function AdminDashboard() {
                 No incidents yet. Try the SOS app →
               </div>
             )}
-            {incidents.map((inc) => (
+            {sortedIncidents.map((inc) => (
               <IncidentCard
                 key={inc.id}
                 incident={inc}
