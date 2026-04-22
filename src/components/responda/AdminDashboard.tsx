@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useIncidents, useVolunteers } from "@/hooks/useResponda";
 import { CrisisMap } from "./CrisisMap";
+import { IncidentTimeline } from "./IncidentTimeline";
 import {
   Incident,
   TYPE_META,
@@ -9,7 +10,7 @@ import {
   recommendVolunteers,
 } from "@/lib/responda";
 import { supabase } from "@/integrations/supabase/client";
-import { CheckCircle2, Clock, MapPin, Sparkles, Users, Zap } from "lucide-react";
+import { Activity, CheckCircle2, Clock, MapPin, Sparkles, Users, Zap } from "lucide-react";
 import { toast } from "sonner";
 
 export function AdminDashboard() {
@@ -349,6 +350,13 @@ function IncidentDetail({ incident }: { incident: Incident }) {
             </div>
           </div>
         )}
+
+        <div className="border-t border-border pt-3">
+          <div className="mb-2 flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+            <Activity className="h-3 w-3" /> Incident Timeline
+          </div>
+          <IncidentTimeline incidentId={incident.id} />
+        </div>
       </div>
 
       {incident.status !== "resolved" && (
