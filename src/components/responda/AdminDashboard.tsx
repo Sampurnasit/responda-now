@@ -595,6 +595,23 @@ function Field({
   );
 }
 
+function FactorChip({ label, value, color }: { label: string; value: string; color: string }) {
+  return (
+    <div
+      className="rounded-md border bg-background/40 px-1.5 py-1"
+      style={{ borderColor: `${color}40` }}
+    >
+      <div
+        className="font-mono text-[8px] uppercase tracking-wider"
+        style={{ color }}
+      >
+        {label}
+      </div>
+      <div className="mt-0.5 truncate text-[11px] font-semibold">{value}</div>
+    </div>
+  );
+}
+
 function timeAgo(iso: string): string {
   const s = (Date.now() - new Date(iso).getTime()) / 1000;
   if (s < 60) return `${Math.floor(s)}s ago`;
