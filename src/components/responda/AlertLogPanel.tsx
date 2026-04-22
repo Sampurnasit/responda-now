@@ -15,7 +15,7 @@ export interface AlertLog {
 
 const CHANNEL_META: Record<
   string,
-  { icon: React.ComponentType<{ className?: string }>; color: string; label: string }
+  { icon: React.ComponentType<{ className?: string; style?: React.CSSProperties }>; color: string; label: string }
 > = {
   push: { icon: Bell, color: "hsl(var(--accent))", label: "PUSH" },
   sms: { icon: MessageSquare, color: "hsl(var(--sev-3))", label: "SMS" },
