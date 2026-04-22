@@ -76,13 +76,62 @@ export function AdminDashboard() {
       </main>
 
       {/* RIGHT: detail panel */}
-      <aside className="col-span-3 min-h-0">
-        {selected ? (
-          <IncidentDetail incident={selected} />
-        ) : (
-          <VolunteersPanel />
-        )}
+      <aside className="col-span-3 flex min-h-0 flex-col gap-2">
+        <div className="flex gap-1 rounded-lg border border-border bg-secondary/30 p-1 font-mono text-[10px] uppercase tracking-widest">
+          <TabBtn active={rightTab === "detail"} onClick={() => setRightTab("detail")}>
+            <Sparkles className="h-3 w-3" /> Detail
+          </TabBtn>
+          <TabBtn active={rightTab === "alerts"} onClick={() => setRightTab("alerts")}>
+            <Radio className="h-3 w-3" /> Alerts
+          </TabBtn>
+          <TabBtn active={rightTab === "roster"} onClick={() => setRightTab("roster")}>
+            <Users className="h-3 w-3" /> Roster
+          </TabBtn>
+        </div>
+        <div className="min-h-0 flex-1">
+          {rightTab === "detail" &&
+            (selected ? (
+              <IncidentDetail incident={selected} />
+            ) : (
+              <EmptyDetailHint />
+            ))}
+          {rightTab === "alerts" && <AlertLogPanel />}
+          {rightTab === "roster" && <VolunteersPanel />}
+        </div>
       </aside>
+    </div>
+  );
+}
+
+function TabBtn({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`flex flex-1 items-center justify-center gap-1 rounded-md py-1.5 transition ${
+        active
+          ? "bg-accent/15 text-accent shadow-[0_0_12px_hsl(var(--accent)/0.2)]"
+          : "text-muted-foreground hover:text-foreground"
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
+
+function EmptyDetailHint() {
+  return (
+    <div className="panel flex h-full items-center justify-center p-6 text-center">
+      <div className="font-mono text-[11px] uppercase tracking-widest text-muted-foreground">
+        Select an incident from the list to view details
+      </div>
     </div>
   );
 }
