@@ -205,12 +205,16 @@ function IncidentCard({
             <div className="font-mono text-[10px] text-muted-foreground">{ago}</div>
           </div>
         </div>
-        <span
-          className="rounded px-1.5 py-0.5 font-mono text-[9px] font-bold tracking-wider"
-          style={{ backgroundColor: `${sev.color}20`, color: sev.color }}
-        >
-          {sev.label}
-        </span>
+        {incident.priority_label ? (
+          <PriorityBadge label={incident.priority_label} score={incident.priority_score} />
+        ) : (
+          <span
+            className="rounded px-1.5 py-0.5 font-mono text-[9px] font-bold tracking-wider"
+            style={{ backgroundColor: `${sev.color}20`, color: sev.color }}
+          >
+            {sev.label}
+          </span>
+        )}
       </div>
       <p className="mt-2 line-clamp-2 text-xs text-muted-foreground">
         {incident.ai_summary || incident.message}
@@ -228,6 +232,31 @@ function IncidentCard({
         </span>
       </div>
     </button>
+  );
+}
+
+function PriorityBadge({
+  label,
+  score,
+  size = "sm",
+}: {
+  label: NonNullable<Incident["priority_label"]>;
+  score?: number | null;
+  size?: "sm" | "lg";
+}) {
+  const meta = PRIORITY_META[label];
+  const isLg = size === "lg";
+  return (
+    <span
+      className={`inline-flex items-center gap-1 rounded font-mono font-bold uppercase tracking-wider ${
+        isLg ? "px-2 py-1 text-[10px]" : "px-1.5 py-0.5 text-[9px]"
+      } ${label === "Critical" ? "pulse-alert" : ""}`}
+      style={{ backgroundColor: meta.bg, color: meta.color, border: `1px solid ${meta.color}55` }}
+    >
+      <Flame className={isLg ? "h-3 w-3" : "h-2.5 w-2.5"} />
+      {label}
+      {score != null && <span className="opacity-70">· {score}</span>}
+    </span>
   );
 }
 
