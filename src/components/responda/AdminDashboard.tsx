@@ -332,6 +332,57 @@ function IncidentDetail({ incident }: { incident: Incident }) {
       </div>
 
       <div className="flex-1 space-y-4 overflow-y-auto p-4">
+        {incident.priority_label && (
+          <div
+            className="rounded-lg border p-3"
+            style={{
+              borderColor: `${PRIORITY_META[incident.priority_label].color}55`,
+              background: PRIORITY_META[incident.priority_label].bg,
+            }}
+          >
+            <div className="mb-2 flex items-center justify-between">
+              <div className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+                <Flame className="h-3 w-3" /> Priority Assessment
+              </div>
+              <PriorityBadge
+                label={incident.priority_label}
+                score={incident.priority_score}
+                size="lg"
+              />
+            </div>
+            <div className="mb-2 h-1.5 w-full overflow-hidden rounded-full bg-secondary/60">
+              <div
+                className="h-full rounded-full transition-all"
+                style={{
+                  width: `${incident.priority_score ?? 0}%`,
+                  backgroundColor: PRIORITY_META[incident.priority_label].color,
+                }}
+              />
+            </div>
+            <div className="grid grid-cols-3 gap-1.5 text-center">
+              <FactorChip
+                label="Severity"
+                value={`${incident.severity}/5`}
+                color="hsl(var(--sev-4))"
+              />
+              <FactorChip
+                label="People"
+                value={incident.people_affected ? `~${incident.people_affected}` : "—"}
+                color="hsl(var(--accent))"
+              />
+              <FactorChip
+                label="Setting"
+                value={
+                  incident.location_type
+                    ? `${LOCATION_META[incident.location_type].emoji} ${LOCATION_META[incident.location_type].label}`
+                    : "—"
+                }
+                color="hsl(var(--status-en-route))"
+              />
+            </div>
+          </div>
+        )}
+
         <div>
           <div className="mb-1 flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
             <Sparkles className="h-3 w-3" /> AI Summary
