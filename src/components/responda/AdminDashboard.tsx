@@ -408,6 +408,13 @@ function IncidentDetail({ incident }: { incident: Incident }) {
           </div>
           <IncidentTimeline incidentId={incident.id} />
         </div>
+
+        <div className="border-t border-border pt-3">
+          <div className="mb-2 flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+            <Radio className="h-3 w-3" /> Alerts Dispatched
+          </div>
+          <AlertLogPanel incidentId={incident.id} compact limit={20} />
+        </div>
       </div>
 
       {incident.status !== "resolved" && (
