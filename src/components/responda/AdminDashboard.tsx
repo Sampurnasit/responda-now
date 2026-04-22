@@ -18,6 +18,7 @@ export function AdminDashboard() {
   const { incidents } = useIncidents();
   const { volunteers } = useVolunteers();
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [rightTab, setRightTab] = useState<"detail" | "alerts" | "roster">("detail");
 
   const selected = selectedId ? incidents.find((i) => i.id === selectedId) ?? null : null;
   const focus = selected ? ([selected.lat, selected.lng] as [number, number]) : null;
