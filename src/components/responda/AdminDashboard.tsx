@@ -1,21 +1,26 @@
 import { useMemo, useState } from "react";
 import { useIncidents, useVolunteers } from "@/hooks/useResponda";
 import { CrisisMap } from "./CrisisMap";
+import { IncidentTimeline } from "./IncidentTimeline";
+import { AlertLogPanel } from "./AlertLogPanel";
 import {
   Incident,
   TYPE_META,
   SEVERITY_META,
   STATUS_META,
+  PRIORITY_META,
+  LOCATION_META,
   recommendVolunteers,
 } from "@/lib/responda";
 import { supabase } from "@/integrations/supabase/client";
-import { CheckCircle2, Clock, MapPin, Sparkles, Users, Zap } from "lucide-react";
+import { Activity, CheckCircle2, Clock, Flame, MapPin, Radio, Sparkles, Users, Zap } from "lucide-react";
 import { toast } from "sonner";
 
 export function AdminDashboard() {
   const { incidents } = useIncidents();
   const { volunteers } = useVolunteers();
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [rightTab, setRightTab] = useState<"detail" | "alerts" | "roster">("detail");
 
   const selected = selectedId ? incidents.find((i) => i.id === selectedId) ?? null : null;
   const focus = selected ? ([selected.lat, selected.lng] as [number, number]) : null;
@@ -24,7 +29,15 @@ export function AdminDashboard() {
   const active = incidents.filter((i) => i.status !== "resolved");
   const resolved = incidents.filter((i) => i.status === "resolved").length;
   const availableVols = volunteers.filter((v) => v.status === "available").length;
-  const critical = active.filter((i) => i.severity >= 4).length;
+  const critical = active.filter((i) => (i.priority_label === "Critical") || i.severity >= 4).length;
+
+  // Sort incidents by priority score (desc), unresolved first
+  const sortedIncidents = [...incidents].sort((a, b) => {
+    const aResolved = a.status === "resolved" ? 1 : 0;
+    const bResolved = b.status === "resolved" ? 1 : 0;
+    if (aResolved !== bResolved) return aResolved - bResolved;
+    return (b.priority_score ?? 0) - (a.priority_score ?? 0);
+  });
 
   return (
     <div className="grid h-[calc(100vh-3.5rem)] grid-cols-12 gap-3 p-3">
@@ -50,7 +63,7 @@ export function AdminDashboard() {
                 No incidents yet. Try the SOS app →
               </div>
             )}
-            {incidents.map((inc) => (
+            {sortedIncidents.map((inc) => (
               <IncidentCard
                 key={inc.id}
                 incident={inc}
@@ -73,13 +86,62 @@ export function AdminDashboard() {
       </main>
 
       {/* RIGHT: detail panel */}
-      <aside className="col-span-3 min-h-0">
-        {selected ? (
-          <IncidentDetail incident={selected} />
-        ) : (
-          <VolunteersPanel />
-        )}
+      <aside className="col-span-3 flex min-h-0 flex-col gap-2">
+        <div className="flex gap-1 rounded-lg border border-border bg-secondary/30 p-1 font-mono text-[10px] uppercase tracking-widest">
+          <TabBtn active={rightTab === "detail"} onClick={() => setRightTab("detail")}>
+            <Sparkles className="h-3 w-3" /> Detail
+          </TabBtn>
+          <TabBtn active={rightTab === "alerts"} onClick={() => setRightTab("alerts")}>
+            <Radio className="h-3 w-3" /> Alerts
+          </TabBtn>
+          <TabBtn active={rightTab === "roster"} onClick={() => setRightTab("roster")}>
+            <Users className="h-3 w-3" /> Roster
+          </TabBtn>
+        </div>
+        <div className="min-h-0 flex-1">
+          {rightTab === "detail" &&
+            (selected ? (
+              <IncidentDetail incident={selected} />
+            ) : (
+              <EmptyDetailHint />
+            ))}
+          {rightTab === "alerts" && <AlertLogPanel />}
+          {rightTab === "roster" && <VolunteersPanel />}
+        </div>
       </aside>
+    </div>
+  );
+}
+
+function TabBtn({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`flex flex-1 items-center justify-center gap-1 rounded-md py-1.5 transition ${
+        active
+          ? "bg-accent/15 text-accent shadow-[0_0_12px_hsl(var(--accent)/0.2)]"
+          : "text-muted-foreground hover:text-foreground"
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
+
+function EmptyDetailHint() {
+  return (
+    <div className="panel flex h-full items-center justify-center p-6 text-center">
+      <div className="font-mono text-[11px] uppercase tracking-widest text-muted-foreground">
+        Select an incident from the list to view details
+      </div>
     </div>
   );
 }
@@ -151,12 +213,16 @@ function IncidentCard({
             <div className="font-mono text-[10px] text-muted-foreground">{ago}</div>
           </div>
         </div>
-        <span
-          className="rounded px-1.5 py-0.5 font-mono text-[9px] font-bold tracking-wider"
-          style={{ backgroundColor: `${sev.color}20`, color: sev.color }}
-        >
-          {sev.label}
-        </span>
+        {incident.priority_label ? (
+          <PriorityBadge label={incident.priority_label} score={incident.priority_score} />
+        ) : (
+          <span
+            className="rounded px-1.5 py-0.5 font-mono text-[9px] font-bold tracking-wider"
+            style={{ backgroundColor: `${sev.color}20`, color: sev.color }}
+          >
+            {sev.label}
+          </span>
+        )}
       </div>
       <p className="mt-2 line-clamp-2 text-xs text-muted-foreground">
         {incident.ai_summary || incident.message}
@@ -174,6 +240,31 @@ function IncidentCard({
         </span>
       </div>
     </button>
+  );
+}
+
+function PriorityBadge({
+  label,
+  score,
+  size = "sm",
+}: {
+  label: NonNullable<Incident["priority_label"]>;
+  score?: number | null;
+  size?: "sm" | "lg";
+}) {
+  const meta = PRIORITY_META[label];
+  const isLg = size === "lg";
+  return (
+    <span
+      className={`inline-flex items-center gap-1 rounded font-mono font-bold uppercase tracking-wider ${
+        isLg ? "px-2 py-1 text-[10px]" : "px-1.5 py-0.5 text-[9px]"
+      } ${label === "Critical" ? "pulse-alert" : ""}`}
+      style={{ backgroundColor: meta.bg, color: meta.color, border: `1px solid ${meta.color}55` }}
+    >
+      <Flame className={isLg ? "h-3 w-3" : "h-2.5 w-2.5"} />
+      {label}
+      {score != null && <span className="opacity-70">· {score}</span>}
+    </span>
   );
 }
 
@@ -241,6 +332,57 @@ function IncidentDetail({ incident }: { incident: Incident }) {
       </div>
 
       <div className="flex-1 space-y-4 overflow-y-auto p-4">
+        {incident.priority_label && (
+          <div
+            className="rounded-lg border p-3"
+            style={{
+              borderColor: `${PRIORITY_META[incident.priority_label].color}55`,
+              background: PRIORITY_META[incident.priority_label].bg,
+            }}
+          >
+            <div className="mb-2 flex items-center justify-between">
+              <div className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+                <Flame className="h-3 w-3" /> Priority Assessment
+              </div>
+              <PriorityBadge
+                label={incident.priority_label}
+                score={incident.priority_score}
+                size="lg"
+              />
+            </div>
+            <div className="mb-2 h-1.5 w-full overflow-hidden rounded-full bg-secondary/60">
+              <div
+                className="h-full rounded-full transition-all"
+                style={{
+                  width: `${incident.priority_score ?? 0}%`,
+                  backgroundColor: PRIORITY_META[incident.priority_label].color,
+                }}
+              />
+            </div>
+            <div className="grid grid-cols-3 gap-1.5 text-center">
+              <FactorChip
+                label="Severity"
+                value={`${incident.severity}/5`}
+                color="hsl(var(--sev-4))"
+              />
+              <FactorChip
+                label="People"
+                value={incident.people_affected ? `~${incident.people_affected}` : "—"}
+                color="hsl(var(--accent))"
+              />
+              <FactorChip
+                label="Setting"
+                value={
+                  incident.location_type
+                    ? `${LOCATION_META[incident.location_type].emoji} ${LOCATION_META[incident.location_type].label}`
+                    : "—"
+                }
+                color="hsl(var(--status-en-route))"
+              />
+            </div>
+          </div>
+        )}
+
         <div>
           <div className="mb-1 flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
             <Sparkles className="h-3 w-3" /> AI Summary
@@ -349,6 +491,20 @@ function IncidentDetail({ incident }: { incident: Incident }) {
             </div>
           </div>
         )}
+
+        <div className="border-t border-border pt-3">
+          <div className="mb-2 flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+            <Activity className="h-3 w-3" /> Incident Timeline
+          </div>
+          <IncidentTimeline incidentId={incident.id} />
+        </div>
+
+        <div className="border-t border-border pt-3">
+          <div className="mb-2 flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+            <Radio className="h-3 w-3" /> Alerts Dispatched
+          </div>
+          <AlertLogPanel incidentId={incident.id} compact limit={20} />
+        </div>
       </div>
 
       {incident.status !== "resolved" && (
@@ -435,6 +591,23 @@ function Field({
         {icon}
         {value}
       </div>
+    </div>
+  );
+}
+
+function FactorChip({ label, value, color }: { label: string; value: string; color: string }) {
+  return (
+    <div
+      className="rounded-md border bg-background/40 px-1.5 py-1"
+      style={{ borderColor: `${color}40` }}
+    >
+      <div
+        className="font-mono text-[8px] uppercase tracking-wider"
+        style={{ color }}
+      >
+        {label}
+      </div>
+      <div className="mt-0.5 truncate text-[11px] font-semibold">{value}</div>
     </div>
   );
 }

@@ -1,6 +1,46 @@
-// Classify a distress message using Lovable AI Gateway
-// Returns: { type, severity (1-5), summary }
+// Classify a distress message and compute a Priority Score
+// Returns: { type, severity, summary, required_skills, people_affected,
+//           location_type, priority_score, priority_label, reasoning }
 import { corsHeaders } from "https://esm.sh/@supabase/supabase-js@2.95.0/cors";
+
+type LocationType = "hotel" | "street" | "rural" | "indoor" | "outdoor" | "transit" | "other";
+type PriorityLabel = "Critical" | "High" | "Medium" | "Low";
+
+// Weights tuned for demo realism
+function computePriority(
+  severity: number,
+  peopleAffected: number,
+  locationType: LocationType
+): { score: number; label: PriorityLabel } {
+  // Severity contributes up to 50 pts
+  const sevPts = (Math.max(1, Math.min(5, severity)) / 5) * 50;
+
+  // People affected: log-scaled, up to 30 pts (1 -> 0, 100+ -> 30)
+  const peopleSafe = Math.max(1, peopleAffected || 1);
+  const peoplePts = Math.min(30, (Math.log10(peopleSafe) / 2) * 30);
+
+  // Location risk multiplier, up to 20 pts
+  const locWeight: Record<LocationType, number> = {
+    hotel: 20,    // dense, hard to evacuate
+    transit: 18,  // crowds, mobility constraints
+    indoor: 14,
+    street: 10,
+    outdoor: 8,
+    rural: 6,     // slower response but lower density
+    other: 8,
+  };
+  const locPts = locWeight[locationType] ?? 8;
+
+  const score = Math.round(sevPts + peoplePts + locPts);
+
+  let label: PriorityLabel;
+  if (score >= 80) label = "Critical";
+  else if (score >= 60) label = "High";
+  else if (score >= 35) label = "Medium";
+  else label = "Low";
+
+  return { score, label };
+}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -29,6 +69,7 @@ Deno.serve(async (req) => {
           {
             role: "system",
             content:
+<<<<<<< HEAD
               "You are an emergency dispatcher AI. Classify distress messages quickly and accurately. Use extra context (time, location, image metadata) to infer urgency. Always call the classify_emergency tool.",
           },
           {
@@ -43,14 +84,17 @@ Deno.serve(async (req) => {
                 ? `Image attached: ${image.name}, mime=${image.type ?? "unknown"}, bytes=${image.size ?? "unknown"}`
                 : "Image attached: none",
             ].join("\n"),
+=======
+              "You are an emergency dispatcher AI. Analyze distress messages and extract structured intelligence. Always call assess_emergency. Estimate people affected from contextual clues (e.g., 'crowd' ≈ 30, 'family' ≈ 4, no mention ≈ 1). Infer location_type from setting words (lobby/room/corridor → hotel; road/sidewalk → street; field/forest/farm → rural; mall/office → indoor; park/beach → outdoor; bus/train/airport → transit). Provide concise reasoning.",
+>>>>>>> ce2376c57682be89417c6b3050df9759ac9dcf1f
           },
         ],
         tools: [
           {
             type: "function",
             function: {
-              name: "classify_emergency",
-              description: "Classify the emergency described in the message",
+              name: "assess_emergency",
+              description: "Assess the emergency, classify it, and extract risk factors",
               parameters: {
                 type: "object",
                 properties: {
@@ -67,21 +111,43 @@ Deno.serve(async (req) => {
                   },
                   summary: {
                     type: "string",
-                    description: "One short sentence summary for dispatchers (max 12 words)",
+                    description: "One short dispatcher summary (max 14 words)",
                   },
                   required_skills: {
                     type: "array",
                     items: { type: "string" },
                     description: "Skill tags needed (e.g. medical, fire, security, logistics)",
                   },
+                  people_affected: {
+                    type: "integer",
+                    minimum: 1,
+                    description: "Estimated number of people directly affected or at risk",
+                  },
+                  location_type: {
+                    type: "string",
+                    enum: ["hotel", "street", "rural", "indoor", "outdoor", "transit", "other"],
+                    description: "Inferred setting where the incident is taking place",
+                  },
+                  reasoning: {
+                    type: "string",
+                    description: "One short sentence explaining the priority assessment (max 20 words)",
+                  },
                 },
-                required: ["type", "severity", "summary", "required_skills"],
+                required: [
+                  "type",
+                  "severity",
+                  "summary",
+                  "required_skills",
+                  "people_affected",
+                  "location_type",
+                  "reasoning",
+                ],
                 additionalProperties: false,
               },
             },
           },
         ],
-        tool_choice: { type: "function", function: { name: "classify_emergency" } },
+        tool_choice: { type: "function", function: { name: "assess_emergency" } },
       }),
     });
 
@@ -111,7 +177,20 @@ Deno.serve(async (req) => {
     if (!toolCall) throw new Error("No tool call in AI response");
     const args = JSON.parse(toolCall.function.arguments);
 
-    return new Response(JSON.stringify(args), {
+    // Compute deterministic priority score from AI-extracted factors
+    const { score, label } = computePriority(
+      args.severity,
+      args.people_affected,
+      args.location_type as LocationType
+    );
+
+    const result = {
+      ...args,
+      priority_score: score,
+      priority_label: label,
+    };
+
+    return new Response(JSON.stringify(result), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {

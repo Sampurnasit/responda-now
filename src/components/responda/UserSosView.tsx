@@ -130,13 +130,17 @@ export function UserSosView() {
       });
       if (aiErr) throw aiErr;
 
-      // 3. Update incident with AI result
+      // 3. Update incident with AI result + priority score
       await supabase
         .from("incidents")
         .update({
           type: aiData.type,
           severity: aiData.severity,
           ai_summary: aiData.summary,
+          people_affected: aiData.people_affected,
+          location_type: aiData.location_type,
+          priority_score: aiData.priority_score,
+          priority_label: aiData.priority_label,
         })
         .eq("id", created.id);
 

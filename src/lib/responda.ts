@@ -2,6 +2,8 @@
 export type EmergencyType = "fire" | "medical" | "crowd" | "security" | "natural" | "other" | "unknown";
 export type IncidentStatus = "pending" | "assigned" | "en_route" | "resolved";
 export type VolunteerStatus = "available" | "assigned" | "en_route" | "offline";
+export type LocationType = "hotel" | "street" | "rural" | "indoor" | "outdoor" | "transit" | "other";
+export type PriorityLabel = "Critical" | "High" | "Medium" | "Low";
 
 export interface Volunteer {
   id: string;
@@ -25,9 +27,30 @@ export interface Incident {
   reporter_label: string;
   assigned_volunteer_id: string | null;
   ai_summary: string | null;
+  people_affected: number | null;
+  location_type: LocationType | null;
+  priority_score: number | null;
+  priority_label: PriorityLabel | null;
   created_at: string;
   updated_at: string;
 }
+
+export const PRIORITY_META: Record<PriorityLabel, { color: string; bg: string }> = {
+  Critical: { color: "hsl(var(--sev-5))", bg: "hsl(var(--sev-5) / 0.15)" },
+  High: { color: "hsl(var(--sev-4))", bg: "hsl(var(--sev-4) / 0.15)" },
+  Medium: { color: "hsl(var(--sev-3))", bg: "hsl(var(--sev-3) / 0.15)" },
+  Low: { color: "hsl(var(--sev-1))", bg: "hsl(var(--sev-1) / 0.15)" },
+};
+
+export const LOCATION_META: Record<LocationType, { label: string; emoji: string }> = {
+  hotel: { label: "Hotel", emoji: "🏨" },
+  street: { label: "Street", emoji: "🛣️" },
+  rural: { label: "Rural", emoji: "🌾" },
+  indoor: { label: "Indoor", emoji: "🏢" },
+  outdoor: { label: "Outdoor", emoji: "🌳" },
+  transit: { label: "Transit", emoji: "🚌" },
+  other: { label: "Other", emoji: "📍" },
+};
 
 // Map center: downtown San Francisco
 export const MAP_CENTER: [number, number] = [37.7849, -122.4150];

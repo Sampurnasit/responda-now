@@ -14,6 +14,88 @@ export type Database = {
   }
   public: {
     Tables: {
+      alert_logs: {
+        Row: {
+          channel: string
+          created_at: string
+          id: string
+          incident_id: string
+          message: string
+          metadata: Json | null
+          recipient: string
+          recipient_type: string
+          status: string
+        }
+        Insert: {
+          channel: string
+          created_at?: string
+          id?: string
+          incident_id: string
+          message: string
+          metadata?: Json | null
+          recipient: string
+          recipient_type: string
+          status?: string
+        }
+        Update: {
+          channel?: string
+          created_at?: string
+          id?: string
+          incident_id?: string
+          message?: string
+          metadata?: Json | null
+          recipient?: string
+          recipient_type?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "alert_logs_incident_id_fkey"
+            columns: ["incident_id"]
+            isOneToOne: false
+            referencedRelation: "incidents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      incident_events: {
+        Row: {
+          created_at: string
+          description: string | null
+          event_type: string
+          id: string
+          incident_id: string
+          metadata: Json | null
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          event_type: string
+          id?: string
+          incident_id: string
+          metadata?: Json | null
+          title: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          event_type?: string
+          id?: string
+          incident_id?: string
+          metadata?: Json | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "incident_events_incident_id_fkey"
+            columns: ["incident_id"]
+            isOneToOne: false
+            referencedRelation: "incidents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       incidents: {
         Row: {
           ai_summary: string | null
@@ -22,7 +104,11 @@ export type Database = {
           id: string
           lat: number
           lng: number
+          location_type: string | null
           message: string
+          people_affected: number | null
+          priority_label: string | null
+          priority_score: number | null
           reporter_label: string
           severity: number
           status: string
@@ -36,7 +122,11 @@ export type Database = {
           id?: string
           lat: number
           lng: number
+          location_type?: string | null
           message: string
+          people_affected?: number | null
+          priority_label?: string | null
+          priority_score?: number | null
           reporter_label?: string
           severity?: number
           status?: string
@@ -50,7 +140,11 @@ export type Database = {
           id?: string
           lat?: number
           lng?: number
+          location_type?: string | null
           message?: string
+          people_affected?: number | null
+          priority_label?: string | null
+          priority_score?: number | null
           reporter_label?: string
           severity?: number
           status?: string
