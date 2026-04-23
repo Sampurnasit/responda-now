@@ -1,27 +1,106 @@
-import { useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useIncidents } from "@/hooks/useResponda";
 import { randomNearby, TYPE_META, SEVERITY_META, STATUS_META } from "@/lib/responda";
-import { AlertTriangle, Loader2, MapPin, Send } from "lucide-react";
+import { AlertTriangle, ImagePlus, Loader2, MapPin, Mic, Send, StopCircle, X } from "lucide-react";
 import { toast } from "sonner";
+
+type SpeechRecognitionCtor = new () => SpeechRecognition;
+
+declare global {
+  interface Window {
+    SpeechRecognition?: SpeechRecognitionCtor;
+    webkitSpeechRecognition?: SpeechRecognitionCtor;
+  }
+}
 
 export function UserSosView() {
   const { incidents } = useIncidents();
   const [message, setMessage] = useState("");
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
+  const [recording, setRecording] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);
+  const recognitionRef = useRef<SpeechRecognition | null>(null);
 
   const myIncident = activeId ? incidents.find((i) => i.id === activeId) : null;
+  const speechSupported = typeof window !== "undefined" && !!(window.SpeechRecognition || window.webkitSpeechRecognition);
+  const capturedTime = useMemo(() => new Date().toISOString(), []);
+
+  function handleImageChange(file: File | null) {
+    if (imagePreviewUrl) URL.revokeObjectURL(imagePreviewUrl);
+    setImageFile(file);
+    if (!file) {
+      setImagePreviewUrl(null);
+      return;
+    }
+    setImagePreviewUrl(URL.createObjectURL(file));
+  }
+
+  function toggleVoiceInput() {
+    if (!speechSupported) {
+      toast.error("Voice input is not supported in this browser");
+      return;
+    }
+
+    if (recording && recognitionRef.current) {
+      recognitionRef.current.stop();
+      setRecording(false);
+      return;
+    }
+
+    const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognitionAPI) return;
+
+    const recognition = new SpeechRecognitionAPI();
+    recognition.lang = "en-US";
+    recognition.interimResults = true;
+    recognition.continuous = false;
+
+    recognition.onresult = (event) => {
+      let transcript = "";
+      for (let i = event.resultIndex; i < event.results.length; i += 1) {
+        transcript += event.results[i][0].transcript;
+      }
+      setMessage((prev) => `${prev}${prev ? " " : ""}${transcript.trim()}`.trim());
+    };
+    recognition.onerror = () => {
+      toast.error("Could not capture voice input");
+      setRecording(false);
+    };
+    recognition.onend = () => setRecording(false);
+    recognitionRef.current = recognition;
+    recognition.start();
+    setRecording(true);
+  }
 
   async function sendSOS(text?: string) {
-    const finalMsg = (text ?? message).trim();
-    if (!finalMsg) {
-      toast.error("Describe the emergency");
+    const baseText = (text ?? message).trim();
+    if (!baseText && !imageFile) {
+      toast.error("Add a message or an image");
       return;
     }
     setSubmitting(true);
     try {
-      const [lat, lng] = randomNearby();
+      const reporterTime = new Date().toISOString();
+      const [lat, lng] = await new Promise<[number, number]>((resolve) => {
+        if (!navigator.geolocation) {
+          resolve(randomNearby());
+          return;
+        }
+        navigator.geolocation.getCurrentPosition(
+          (pos) => resolve([pos.coords.latitude, pos.coords.longitude]),
+          () => resolve(randomNearby()),
+          { timeout: 5000, enableHighAccuracy: true }
+        );
+      });
+      const evidenceInfo = [
+        `Time (ISO): ${reporterTime}`,
+        `Location: ${lat.toFixed(5)}, ${lng.toFixed(5)}`,
+        imageFile ? `Image evidence: ${imageFile.name}` : "Image evidence: none",
+      ].join(" | ");
+      const finalMsg = `${baseText || "Emergency reported with image evidence."} [${evidenceInfo}]`;
 
       // 1. Insert pending incident
       const { data: created, error: insErr } = await supabase
@@ -32,10 +111,22 @@ export function UserSosView() {
       if (insErr) throw insErr;
       setActiveId(created.id);
       setMessage("");
+      handleImageChange(null);
 
       // 2. Call AI classifier
       const { data: aiData, error: aiErr } = await supabase.functions.invoke("classify-incident", {
-        body: { message: finalMsg },
+        body: {
+          message: baseText || "Emergency reported with image evidence",
+          timestamp: reporterTime,
+          location: { lat, lng },
+          image: imageFile
+            ? {
+                name: imageFile.name,
+                type: imageFile.type || "application/octet-stream",
+                size: imageFile.size,
+              }
+            : null,
+        },
       });
       if (aiErr) throw aiErr;
 
@@ -124,7 +215,7 @@ export function UserSosView() {
           </div>
           <h2 className="mt-1 text-2xl font-bold">Need urgent help?</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Tap the button. Your location and message go straight to dispatchers.
+            One tap can send SOS. Location and time are auto-captured.
           </p>
 
           <div className="my-8 flex justify-center">
@@ -149,12 +240,47 @@ export function UserSosView() {
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               rows={3}
-              placeholder="Describe what's happening..."
+              placeholder="Type or dictate what's happening..."
               className="w-full resize-none rounded-lg border border-input bg-input/40 px-3 py-2 text-sm placeholder:text-muted-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring"
             />
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <button
+                type="button"
+                onClick={toggleVoiceInput}
+                disabled={submitting}
+                className="flex items-center justify-center gap-2 rounded-lg border border-border bg-secondary/40 py-2 text-sm font-medium transition hover:bg-secondary/70 disabled:opacity-50"
+              >
+                {recording ? <StopCircle className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+                {recording ? "Stop voice input" : "Use voice input"}
+              </button>
+              <label className="flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-border bg-secondary/40 py-2 text-sm font-medium transition hover:bg-secondary/70">
+                <ImagePlus className="h-4 w-4" />
+                Add image evidence
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => handleImageChange(e.target.files?.[0] ?? null)}
+                  disabled={submitting}
+                />
+              </label>
+            </div>
+            {imagePreviewUrl ? (
+              <div className="relative overflow-hidden rounded-lg border border-border">
+                <img src={imagePreviewUrl} alt="SOS evidence preview" className="h-36 w-full object-cover" />
+                <button
+                  type="button"
+                  onClick={() => handleImageChange(null)}
+                  disabled={submitting}
+                  className="absolute right-2 top-2 rounded-full bg-background/90 p-1 text-muted-foreground hover:text-foreground"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            ) : null}
             <button
               onClick={() => sendSOS()}
-              disabled={submitting || !message.trim()}
+              disabled={submitting || (!message.trim() && !imageFile)}
               className="flex w-full items-center justify-center gap-2 rounded-lg bg-foreground py-2 text-sm font-medium text-background transition hover:opacity-90 disabled:opacity-50"
             >
               <Send className="h-4 w-4" />
@@ -182,7 +308,10 @@ export function UserSosView() {
 
           <div className="mt-6 flex items-center gap-2 text-xs text-muted-foreground">
             <MapPin className="h-3.5 w-3.5" />
-            <span>Location auto-attached (mock GPS)</span>
+            <span>Location + timestamp auto-attached at send time</span>
+          </div>
+          <div className="mt-1 text-xs text-muted-foreground">
+            Session started: {new Date(capturedTime).toLocaleTimeString()}
           </div>
         </div>
       </div>
