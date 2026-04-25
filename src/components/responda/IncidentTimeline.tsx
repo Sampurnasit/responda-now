@@ -20,6 +20,16 @@ export interface IncidentEvent {
   created_at: string;
 }
 
+type AuditEntry = {
+  id: string;
+  title: string;
+  description: string | null;
+  created_at: string;
+  event_type: string;
+  actor: string;
+  actionSummary: string;
+};
+
 const EVENT_META: Record<
   string,
   { icon: React.ComponentType<{ className?: string }>; color: string }
@@ -44,8 +54,73 @@ function formatRelative(iso: string): string {
   return `${Math.floor(s / 3600)}h ago`;
 }
 
+function actorFromMetadata(metadata: Record<string, unknown> | null): string {
+  if (!metadata) return "System";
+  const actorName = metadata["actor_name"];
+  const responderName = metadata["responder_name"];
+  const volunteerName = metadata["volunteer_name"];
+  const actorRole = metadata["actor_role"];
+
+  if (typeof actorName === "string" && actorName.length > 0) return actorName;
+  if (typeof responderName === "string" && responderName.length > 0) return responderName;
+  if (typeof volunteerName === "string" && volunteerName.length > 0) return volunteerName;
+  if (typeof actorRole === "string" && actorRole.length > 0) return actorRole;
+  return "System";
+}
+
+function actionFromEvent(event: IncidentEvent): string {
+  const metadata = event.metadata ?? {};
+  const directAction = metadata["action"];
+  if (typeof directAction === "string" && directAction.length > 0) return directAction;
+  if (event.description) return event.description;
+  return event.title;
+}
+
+function buildMockAuditTrail(incidentId: string): AuditEntry[] {
+  const now = Date.now();
+  const seed = incidentId.split("").reduce((acc, ch) => acc + ch.charCodeAt(0), 0) % 9;
+  return [
+    {
+      id: `${incidentId}-mock-1`,
+      event_type: "sos_triggered",
+      title: "SOS Triggered",
+      description: "Citizen reported smoke and panic near the main street.",
+      created_at: new Date(now - (42 + seed) * 60 * 1000).toISOString(),
+      actor: "Citizen Reporter",
+      actionSummary: "Created emergency incident report",
+    },
+    {
+      id: `${incidentId}-mock-2`,
+      event_type: "ai_classified",
+      title: "AI Classified Priority",
+      description: "Priority elevated after crowd and severity analysis.",
+      created_at: new Date(now - (36 + seed) * 60 * 1000).toISOString(),
+      actor: "AI Dispatcher",
+      actionSummary: "Set risk level and recommended response",
+    },
+    {
+      id: `${incidentId}-mock-3`,
+      event_type: "volunteer_assigned",
+      title: "Responder Assigned",
+      description: "Nearest trained volunteer was dispatched.",
+      created_at: new Date(now - (28 + seed) * 60 * 1000).toISOString(),
+      actor: "Control Room Operator",
+      actionSummary: "Assigned first responder to incident",
+    },
+    {
+      id: `${incidentId}-mock-4`,
+      event_type: "status_en_route",
+      title: "Responder En Route",
+      description: "Responder confirmed movement to the location.",
+      created_at: new Date(now - (17 + seed) * 60 * 1000).toISOString(),
+      actor: "Responder Team Alpha",
+      actionSummary: "Shared live movement update",
+    },
+  ];
+}
+
 export function IncidentTimeline({ incidentId }: { incidentId: string }) {
-  const [events, setEvents] = useState<IncidentEvent[]>([]);
+  const [events, setEvents] = useState<AuditEntry[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -58,7 +133,12 @@ export function IncidentTimeline({ incidentId }: { incidentId: string }) {
       .order("created_at", { ascending: true })
       .then(({ data }) => {
         if (mounted) {
-          setEvents((data as IncidentEvent[]) || []);
+          const liveEvents = ((data as IncidentEvent[]) || []).map((event) => ({
+            ...event,
+            actor: actorFromMetadata(event.metadata),
+            actionSummary: actionFromEvent(event),
+          }));
+          setEvents(liveEvents.length > 0 ? liveEvents : buildMockAuditTrail(incidentId));
           setLoading(false);
         }
       });
@@ -74,7 +154,15 @@ export function IncidentTimeline({ incidentId }: { incidentId: string }) {
           filter: `incident_id=eq.${incidentId}`,
         },
         (payload) => {
-          setEvents((prev) => [...prev, payload.new as IncidentEvent]);
+          const event = payload.new as IncidentEvent;
+          setEvents((prev) => [
+            ...prev,
+            {
+              ...event,
+              actor: actorFromMetadata(event.metadata),
+              actionSummary: actionFromEvent(event),
+            },
+          ]);
         }
       )
       .subscribe();
@@ -149,6 +237,20 @@ export function IncidentTimeline({ incidentId }: { incidentId: string }) {
                   {event.description}
                 </p>
               )}
+              <div className="mt-1 grid grid-cols-1 gap-0.5 rounded border border-border bg-secondary/25 p-1.5 text-[10px]">
+                <div>
+                  <span className="font-mono uppercase tracking-wider text-muted-foreground">Who:</span>{" "}
+                  <span className="font-medium">{event.actor}</span>
+                </div>
+                <div>
+                  <span className="font-mono uppercase tracking-wider text-muted-foreground">What:</span>{" "}
+                  <span>{event.actionSummary}</span>
+                </div>
+                <div>
+                  <span className="font-mono uppercase tracking-wider text-muted-foreground">When:</span>{" "}
+                  <span>{new Date(event.created_at).toLocaleString()}</span>
+                </div>
+              </div>
               <div className="mt-0.5 font-mono text-[9px] text-muted-foreground/70">
                 {formatRelative(event.created_at)}
               </div>

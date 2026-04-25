@@ -494,7 +494,7 @@ function IncidentDetail({ incident }: { incident: Incident }) {
 
         <div className="border-t border-border pt-3">
           <div className="mb-2 flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-            <Activity className="h-3 w-3" /> Incident Timeline
+            <Activity className="h-3 w-3" /> Incident Timeline & Audit Trail
           </div>
           <IncidentTimeline incidentId={incident.id} />
         </div>
