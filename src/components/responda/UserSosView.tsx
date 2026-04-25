@@ -2,6 +2,7 @@ import { useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useIncidents } from "@/hooks/useResponda";
 import { randomNearby, TYPE_META, SEVERITY_META, STATUS_META } from "@/lib/responda";
+import { PredictiveChatbot } from "./PredictiveChatbot";
 import { AlertTriangle, ImagePlus, Loader2, MapPin, Mic, Send, StopCircle, X } from "lucide-react";
 import { toast } from "sonner";
 
@@ -198,6 +199,9 @@ export function UserSosView() {
             Send another SOS
           </button>
         </div>
+        <div className="mt-4 h-[420px]">
+          <PredictiveChatbot incidents={incidents} />
+        </div>
       </div>
     );
   }
@@ -318,6 +322,9 @@ export function UserSosView() {
             Session started: {new Date(capturedTime).toLocaleTimeString()}
           </div>
         </div>
+      </div>
+      <div className="mt-4 h-[420px]">
+        <PredictiveChatbot incidents={incidents} />
       </div>
     </div>
   );

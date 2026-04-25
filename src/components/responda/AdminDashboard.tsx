@@ -3,6 +3,7 @@ import { useIncidents, useVolunteers } from "@/hooks/useResponda";
 import { CrisisMap } from "./CrisisMap";
 import { IncidentTimeline } from "./IncidentTimeline";
 import { AlertLogPanel } from "./AlertLogPanel";
+import { PredictiveChatbot } from "./PredictiveChatbot";
 import {
   Incident,
   TYPE_META,
@@ -13,14 +14,14 @@ import {
   recommendVolunteers,
 } from "@/lib/responda";
 import { supabase } from "@/integrations/supabase/client";
-import { Activity, CheckCircle2, Clock, Flame, MapPin, Radio, Sparkles, Users, Zap } from "lucide-react";
+import { Activity, Bot, CheckCircle2, Clock, Flame, MapPin, Radio, Sparkles, Users, Zap } from "lucide-react";
 import { toast } from "sonner";
 
 export function AdminDashboard() {
   const { incidents } = useIncidents();
   const { volunteers } = useVolunteers();
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [rightTab, setRightTab] = useState<"detail" | "alerts" | "roster">("detail");
+  const [rightTab, setRightTab] = useState<"detail" | "alerts" | "roster" | "predict">("detail");
 
   const selected = selectedId ? incidents.find((i) => i.id === selectedId) ?? null : null;
   const focus = selected ? ([selected.lat, selected.lng] as [number, number]) : null;
@@ -97,6 +98,9 @@ export function AdminDashboard() {
           <TabBtn active={rightTab === "roster"} onClick={() => setRightTab("roster")}>
             <Users className="h-3 w-3" /> Roster
           </TabBtn>
+          <TabBtn active={rightTab === "predict"} onClick={() => setRightTab("predict")}>
+            <Bot className="h-3 w-3" /> Bot
+          </TabBtn>
         </div>
         <div className="min-h-0 flex-1">
           {rightTab === "detail" &&
@@ -107,6 +111,7 @@ export function AdminDashboard() {
             ))}
           {rightTab === "alerts" && <AlertLogPanel />}
           {rightTab === "roster" && <VolunteersPanel />}
+          {rightTab === "predict" && <PredictiveChatbot incidents={incidents} />}
         </div>
       </aside>
     </div>

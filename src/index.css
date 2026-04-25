@@ -148,22 +148,31 @@
   pointer-events: none;
 }
 
-/* Leaflet dark overrides */
-.leaflet-container {
-  background: hsl(222 30% 6%) !important;
-  font-family: inherit;
+/* Google Maps marker pulse */
+@keyframes pulse-ring-gmap {
+  0% { transform: scale(1); opacity: 0.6; }
+  50% { transform: scale(1.8); opacity: 0; }
+  100% { transform: scale(1); opacity: 0; }
 }
-.leaflet-tile {
-  filter: brightness(0.55) invert(1) contrast(1.1) hue-rotate(190deg) saturate(0.4) brightness(0.85);
-}
-.leaflet-control-attribution {
-  background: hsl(222 28% 9% / 0.8) !important;
-  color: hsl(215 16% 60%) !important;
-  font-size: 10px !important;
-}
-.leaflet-control-attribution a { color: hsl(188 95% 55%) !important; }
-.leaflet-control-zoom a {
+.pulse-ring-gmap { animation: pulse-ring-gmap 1.6s ease-out infinite; }
+
+/* Google Maps info-window dark override */
+.gm-style .gm-style-iw-c {
   background: hsl(222 28% 9%) !important;
-  color: hsl(210 40% 96%) !important;
-  border-color: hsl(222 20% 16%) !important;
+  border: 1px solid hsl(222 20% 16%) !important;
+  border-radius: 12px !important;
+  padding: 0 !important;
+  box-shadow: 0 8px 32px -12px hsl(0 0% 0% / 0.6) !important;
 }
+.gm-style .gm-style-iw-d {
+  overflow: auto !important;
+  padding: 12px !important;
+  color: hsl(210 40% 96%) !important;
+}
+.gm-style .gm-style-iw-tc::after {
+  background: hsl(222 28% 9%) !important;
+}
+.gm-style .gm-ui-hover-effect {
+  filter: invert(1);
+}
+
