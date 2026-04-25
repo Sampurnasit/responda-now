@@ -2,14 +2,10 @@ import { useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useIncidents } from "@/hooks/useResponda";
 import { randomNearby, TYPE_META, SEVERITY_META, STATUS_META } from "@/lib/responda";
-<<<<<<< HEAD
-import { PredictiveChatbot } from "./PredictiveChatbot";
-import { AlertTriangle, ImagePlus, Loader2, MapPin, Mic, Send, StopCircle, X } from "lucide-react";
-=======
->>>>>>> 4b228d9384dbb9ca21969655784fbc08f1a099b1
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import { Signal, Mic, StopCircle, ImagePlus } from "lucide-react";
+import { PredictiveChatbot } from "./PredictiveChatbot";
 
 // Modular Components
 import { SosOrb } from "./sos/SosOrb";
@@ -245,38 +241,32 @@ export function UserSosView() {
 
   // --- View Orchestration ---
   return (
-    <div className="sos-app-container flex flex-col items-center justify-between p-6 overflow-hidden">
+    <div className="sos-app-container flex flex-col items-center justify-start p-6 overflow-y-auto">
       <AnimatePresence mode="wait">
         {myIncident ? (
-          <SosIncidentProfile
-            key="result"
-            incident={myIncident as any}
-            typeMeta={TYPE_META}
-            sevMeta={SEVERITY_META}
-            statusMeta={STATUS_META}
-            onReset={resetInterface}
-          />
+          <div className="w-full flex flex-col gap-6">
+            <SosIncidentProfile
+              key="result"
+              incident={myIncident as any}
+              typeMeta={TYPE_META}
+              sevMeta={SEVERITY_META}
+              statusMeta={STATUS_META}
+              onReset={resetInterface}
+            />
+            {/* Predictive Chatbot integrated below active incident */}
+            <div className="w-full max-w-md mx-auto h-[450px]">
+              <PredictiveChatbot incidents={incidents} />
+            </div>
+          </div>
         ) : (
           <motion.div 
             key="main"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="w-full flex flex-col items-center justify-between flex-1"
+            className="w-full flex flex-col items-center justify-between min-h-[600px]"
           >
-<<<<<<< HEAD
-            Send another SOS
-          </button>
-        </div>
-        <div className="mt-4 h-[420px]">
-          <PredictiveChatbot incidents={incidents} />
-        </div>
-      </div>
-    );
-  }
-=======
             <div className="h-12" />
->>>>>>> 4b228d9384dbb9ca21969655784fbc08f1a099b1
 
             <SosOrb
               state={sosState}
@@ -287,7 +277,7 @@ export function UserSosView() {
               onPointerUp={handleEndPress}
             />
 
-            <div className="h-20 flex items-center justify-center">
+            <div className="h-24 flex items-center justify-center">
               <AnimatePresence>
                 {sosState === "CANCEL_GRACE" && (
                   <motion.button
@@ -373,33 +363,6 @@ export function UserSosView() {
               </AnimatePresence>
             </div>
 
-<<<<<<< HEAD
-          <div className="mt-6 flex items-center gap-2 text-xs text-muted-foreground">
-            <MapPin className="h-3.5 w-3.5" />
-            <span>Location + timestamp auto-attached at send time</span>
-          </div>
-          <div className="mt-1 text-xs text-muted-foreground">
-            Session started: {new Date(capturedTime).toLocaleTimeString()}
-          </div>
-        </div>
-      </div>
-      <div className="mt-4 h-[420px]">
-        <PredictiveChatbot incidents={incidents} />
-      </div>
-    </div>
-  );
-}
-
-function Row({ label, value, valueColor }: { label: string; value: string; valueColor?: string }) {
-  return (
-    <div className="flex items-center justify-between border-b border-border/60 pb-2 last:border-0 last:pb-0">
-      <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-        {label}
-      </span>
-      <span className="font-semibold" style={valueColor ? { color: valueColor } : undefined}>
-        {value}
-      </span>
-=======
             <SosControls
               message={message}
               onMessageChange={setMessage}
@@ -415,10 +378,14 @@ function Row({ label, value, valueColor }: { label: string; value: string; value
             />
 
             <div className="h-8" />
+            
+            {/* Optional: Add predictive chatbot at the very bottom even in IDLE state if desired */}
+            <div className="w-full max-w-md mx-auto h-[450px] mt-12 opacity-80 hover:opacity-100 transition-opacity">
+               <PredictiveChatbot incidents={incidents} />
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
->>>>>>> 4b228d9384dbb9ca21969655784fbc08f1a099b1
     </div>
   );
 }
