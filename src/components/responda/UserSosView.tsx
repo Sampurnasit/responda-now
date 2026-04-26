@@ -5,6 +5,7 @@ import { randomNearby, TYPE_META, SEVERITY_META, STATUS_META } from "@/lib/respo
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import { Signal, Mic, StopCircle, ImagePlus } from "lucide-react";
+import { PredictiveChatbot } from "./PredictiveChatbot";
 
 // Modular Components
 import { SosOrb } from "./sos/SosOrb";
@@ -240,24 +241,30 @@ export function UserSosView() {
 
   // --- View Orchestration ---
   return (
-    <div className="sos-app-container flex flex-col items-center justify-between p-6 overflow-hidden">
+    <div className="sos-app-container flex flex-col items-center justify-start p-6 overflow-y-auto">
       <AnimatePresence mode="wait">
         {myIncident ? (
-          <SosIncidentProfile
-            key="result"
-            incident={myIncident as any}
-            typeMeta={TYPE_META}
-            sevMeta={SEVERITY_META}
-            statusMeta={STATUS_META}
-            onReset={resetInterface}
-          />
+          <div className="w-full flex flex-col gap-6">
+            <SosIncidentProfile
+              key="result"
+              incident={myIncident as any}
+              typeMeta={TYPE_META}
+              sevMeta={SEVERITY_META}
+              statusMeta={STATUS_META}
+              onReset={resetInterface}
+            />
+            {/* Predictive Chatbot integrated below active incident */}
+            <div className="w-full max-w-md mx-auto h-[450px]">
+              <PredictiveChatbot incidents={incidents} />
+            </div>
+          </div>
         ) : (
           <motion.div 
             key="main"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="w-full flex flex-col items-center justify-between flex-1"
+            className="w-full flex flex-col items-center justify-between min-h-[600px]"
           >
             <div className="h-12" />
 
@@ -270,7 +277,7 @@ export function UserSosView() {
               onPointerUp={handleEndPress}
             />
 
-            <div className="h-20 flex items-center justify-center">
+            <div className="h-24 flex items-center justify-center">
               <AnimatePresence>
                 {sosState === "CANCEL_GRACE" && (
                   <motion.button
@@ -355,7 +362,11 @@ export function UserSosView() {
                 )}
               </AnimatePresence>
             </div>
+<<<<<<< HEAD
             
+=======
+
+>>>>>>> 611192ad85ef98ec96a1bd1c54f3bb273c7dc1cb
             <SosControls
               message={message}
               onMessageChange={setMessage}
@@ -371,6 +382,11 @@ export function UserSosView() {
             />
 
             <div className="h-8" />
+            
+            {/* Optional: Add predictive chatbot at the very bottom even in IDLE state if desired */}
+            <div className="w-full max-w-md mx-auto h-[450px] mt-12 opacity-80 hover:opacity-100 transition-opacity">
+               <PredictiveChatbot incidents={incidents} />
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
