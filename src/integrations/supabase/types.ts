@@ -165,6 +165,7 @@ export type Database = {
         Row: {
           avatar_color: string
           created_at: string
+          email: string | null
           id: string
           lat: number
           lng: number
@@ -175,6 +176,7 @@ export type Database = {
         Insert: {
           avatar_color?: string
           created_at?: string
+          email?: string | null
           id?: string
           lat: number
           lng: number
@@ -185,6 +187,7 @@ export type Database = {
         Update: {
           avatar_color?: string
           created_at?: string
+          email?: string | null
           id?: string
           lat?: number
           lng?: number

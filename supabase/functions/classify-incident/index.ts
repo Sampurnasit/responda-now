@@ -69,8 +69,7 @@ Deno.serve(async (req) => {
           {
             role: "system",
             content:
-<<<<<<< HEAD
-              "You are an emergency dispatcher AI. Classify distress messages quickly and accurately. Use extra context (time, location, image metadata) to infer urgency. Always call the classify_emergency tool.",
+              "You are an emergency dispatcher AI. Analyze distress messages and extract structured intelligence. Always call assess_emergency. Estimate people affected from contextual clues (e.g., 'crowd' ≈ 30, 'family' ≈ 4, no mention ≈ 1). Infer location_type from setting words (lobby/room/corridor → hotel; road/sidewalk → street; field/forest/farm → rural; mall/office → indoor; park/beach → outdoor; bus/train/airport → transit). Provide concise reasoning.",
           },
           {
             role: "user",
@@ -84,9 +83,6 @@ Deno.serve(async (req) => {
                 ? `Image attached: ${image.name}, mime=${image.type ?? "unknown"}, bytes=${image.size ?? "unknown"}`
                 : "Image attached: none",
             ].join("\n"),
-=======
-              "You are an emergency dispatcher AI. Analyze distress messages and extract structured intelligence. Always call assess_emergency. Estimate people affected from contextual clues (e.g., 'crowd' ≈ 30, 'family' ≈ 4, no mention ≈ 1). Infer location_type from setting words (lobby/room/corridor → hotel; road/sidewalk → street; field/forest/farm → rural; mall/office → indoor; park/beach → outdoor; bus/train/airport → transit). Provide concise reasoning.",
->>>>>>> ce2376c57682be89417c6b3050df9759ac9dcf1f
           },
         ],
         tools: [

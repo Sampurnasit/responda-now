@@ -8,6 +8,7 @@ export type PriorityLabel = "Critical" | "High" | "Medium" | "Low";
 export interface Volunteer {
   id: string;
   name: string;
+  email?: string | null;
   skills: string[];
   lat: number;
   lng: number;

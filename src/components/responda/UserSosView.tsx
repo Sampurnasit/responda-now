@@ -2,11 +2,6 @@ import { useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useIncidents } from "@/hooks/useResponda";
 import { randomNearby, TYPE_META, SEVERITY_META, STATUS_META } from "@/lib/responda";
-<<<<<<< HEAD
-import { PredictiveChatbot } from "./PredictiveChatbot";
-import { AlertTriangle, ImagePlus, Loader2, MapPin, Mic, Send, StopCircle, X } from "lucide-react";
-=======
->>>>>>> 4b228d9384dbb9ca21969655784fbc08f1a099b1
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import { Signal, Mic, StopCircle, ImagePlus } from "lucide-react";
@@ -264,19 +259,7 @@ export function UserSosView() {
             exit={{ opacity: 0 }}
             className="w-full flex flex-col items-center justify-between flex-1"
           >
-<<<<<<< HEAD
-            Send another SOS
-          </button>
-        </div>
-        <div className="mt-4 h-[420px]">
-          <PredictiveChatbot incidents={incidents} />
-        </div>
-      </div>
-    );
-  }
-=======
             <div className="h-12" />
->>>>>>> 4b228d9384dbb9ca21969655784fbc08f1a099b1
 
             <SosOrb
               state={sosState}
@@ -372,34 +355,7 @@ export function UserSosView() {
                 )}
               </AnimatePresence>
             </div>
-
-<<<<<<< HEAD
-          <div className="mt-6 flex items-center gap-2 text-xs text-muted-foreground">
-            <MapPin className="h-3.5 w-3.5" />
-            <span>Location + timestamp auto-attached at send time</span>
-          </div>
-          <div className="mt-1 text-xs text-muted-foreground">
-            Session started: {new Date(capturedTime).toLocaleTimeString()}
-          </div>
-        </div>
-      </div>
-      <div className="mt-4 h-[420px]">
-        <PredictiveChatbot incidents={incidents} />
-      </div>
-    </div>
-  );
-}
-
-function Row({ label, value, valueColor }: { label: string; value: string; valueColor?: string }) {
-  return (
-    <div className="flex items-center justify-between border-b border-border/60 pb-2 last:border-0 last:pb-0">
-      <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-        {label}
-      </span>
-      <span className="font-semibold" style={valueColor ? { color: valueColor } : undefined}>
-        {value}
-      </span>
-=======
+            
             <SosControls
               message={message}
               onMessageChange={setMessage}
@@ -418,7 +374,6 @@ function Row({ label, value, valueColor }: { label: string; value: string; value
           </motion.div>
         )}
       </AnimatePresence>
->>>>>>> 4b228d9384dbb9ca21969655784fbc08f1a099b1
     </div>
   );
 }

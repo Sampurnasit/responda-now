@@ -1,14 +1,29 @@
-import { useState } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { useIncidents, useVolunteers } from "@/hooks/useResponda";
 import { supabase } from "@/integrations/supabase/client";
 import { TYPE_META, SEVERITY_META, STATUS_META } from "@/lib/responda";
 import { CheckCircle2, MapPin, Navigation, X } from "lucide-react";
 import { toast } from "sonner";
 
-export function VolunteerView() {
+export function VolunteerView({ initialVolunteerEmail }: { initialVolunteerEmail?: string }) {
   const { volunteers } = useVolunteers();
   const { incidents } = useIncidents();
   const [selectedVolId, setSelectedVolId] = useState<string | null>(volunteers[0]?.id ?? null);
+  const [showAddVolunteer, setShowAddVolunteer] = useState(false);
+  const [newVolunteerName, setNewVolunteerName] = useState("");
+  const [newVolunteerEmail, setNewVolunteerEmail] = useState("");
+  const [newVolunteerSkills, setNewVolunteerSkills] = useState("");
+  const [newVolunteerLat, setNewVolunteerLat] = useState("");
+  const [newVolunteerLng, setNewVolunteerLng] = useState("");
+  const [savingVolunteer, setSavingVolunteer] = useState(false);
+
+  useEffect(() => {
+    if (!volunteers.length || !initialVolunteerEmail) return;
+    const matched = volunteers.find(
+      (v) => (v.email ?? "").toLowerCase() === initialVolunteerEmail.toLowerCase()
+    );
+    if (matched) setSelectedVolId(matched.id);
+  }, [volunteers, initialVolunteerEmail]);
 
   // Default to first volunteer if not selected
   const me = selectedVolId
@@ -52,13 +67,152 @@ export function VolunteerView() {
     }
   }
 
+  async function useMyLocationForVolunteer() {
+    if (!navigator.geolocation) {
+      toast.error("Geolocation is not supported in this browser");
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setNewVolunteerLat(pos.coords.latitude.toFixed(6));
+        setNewVolunteerLng(pos.coords.longitude.toFixed(6));
+      },
+      () => toast.error("Could not fetch your location")
+    );
+  }
+
+  async function addVolunteer(e: FormEvent) {
+    e.preventDefault();
+    const name = newVolunteerName.trim();
+    const email = newVolunteerEmail.trim().toLowerCase();
+    if (!name) {
+      toast.error("Please enter volunteer name");
+      return;
+    }
+    if (!email || !email.includes("@")) {
+      toast.error("Please enter a valid email");
+      return;
+    }
+
+    const lat = Number(newVolunteerLat);
+    const lng = Number(newVolunteerLng);
+    if (Number.isNaN(lat) || Number.isNaN(lng)) {
+      toast.error("Please enter valid latitude and longitude");
+      return;
+    }
+
+    const skills = newVolunteerSkills
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+
+    try {
+      setSavingVolunteer(true);
+      const { data, error } = await supabase
+        .from("volunteers")
+        .insert({
+          name,
+          email,
+          lat,
+          lng,
+          skills,
+          status: "available",
+          avatar_color: `hsl(${Math.floor(Math.random() * 360)} 80% 58%)`,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      setSelectedVolId(data.id);
+      setNewVolunteerName("");
+      setNewVolunteerEmail("");
+      setNewVolunteerSkills("");
+      setNewVolunteerLat("");
+      setNewVolunteerLng("");
+      setShowAddVolunteer(false);
+      toast.success("Volunteer added successfully");
+    } catch {
+      toast.error("Failed to add volunteer");
+    } finally {
+      setSavingVolunteer(false);
+    }
+  }
+
   return (
     <div className="mx-auto max-w-3xl space-y-4 p-6">
       {/* Profile selector */}
       <div className="panel p-4">
-        <div className="mb-3 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-          Acting as Volunteer
+        <div className="mb-3 flex items-center justify-between">
+          <div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+            Acting as Volunteer
+          </div>
+          <button
+            onClick={() => setShowAddVolunteer((prev) => !prev)}
+            className="rounded-md border border-accent/40 bg-accent/10 px-3 py-1.5 text-xs font-semibold text-accent transition hover:bg-accent/20"
+          >
+            {showAddVolunteer ? "Close Form" : "Add Volunteer"}
+          </button>
         </div>
+
+        {showAddVolunteer && (
+          <form onSubmit={addVolunteer} className="mb-4 space-y-3 rounded-lg border border-border/70 bg-secondary/20 p-3">
+            <input
+              value={newVolunteerName}
+              onChange={(e) => setNewVolunteerName(e.target.value)}
+              placeholder="Volunteer name"
+              className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none ring-primary/40 transition focus:ring-2"
+            />
+            <input
+              type="email"
+              value={newVolunteerEmail}
+              onChange={(e) => setNewVolunteerEmail(e.target.value)}
+              placeholder="Email ID"
+              className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none ring-primary/40 transition focus:ring-2"
+            />
+            <input
+              value={newVolunteerSkills}
+              onChange={(e) => setNewVolunteerSkills(e.target.value)}
+              placeholder="Skills (comma-separated, e.g. medical, fire, logistics)"
+              className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none ring-primary/40 transition focus:ring-2"
+            />
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <input
+                type="number"
+                step="any"
+                value={newVolunteerLat}
+                onChange={(e) => setNewVolunteerLat(e.target.value)}
+                placeholder="Latitude"
+                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none ring-primary/40 transition focus:ring-2"
+              />
+              <input
+                type="number"
+                step="any"
+                value={newVolunteerLng}
+                onChange={(e) => setNewVolunteerLng(e.target.value)}
+                placeholder="Longitude"
+                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none ring-primary/40 transition focus:ring-2"
+              />
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={useMyLocationForVolunteer}
+                className="rounded-md border border-border bg-secondary px-3 py-2 text-xs font-semibold text-secondary-foreground transition hover:bg-secondary/70"
+              >
+                Use My Location
+              </button>
+              <button
+                type="submit"
+                disabled={savingVolunteer}
+                className="rounded-md bg-accent px-3 py-2 text-xs font-semibold text-accent-foreground transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {savingVolunteer ? "Saving..." : "Save Volunteer"}
+              </button>
+            </div>
+          </form>
+        )}
+
         <div className="flex flex-wrap gap-2">
           {volunteers.map((v) => (
             <button
@@ -77,6 +231,7 @@ export function VolunteerView() {
                 {v.name[0]}
               </span>
               {v.name}
+              {v.email ? <span className="text-xs text-muted-foreground">({v.email})</span> : null}
             </button>
           ))}
         </div>
