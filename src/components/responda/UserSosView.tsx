@@ -1,5 +1,7 @@
 import { useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { db } from "@/lib/firebase";
+import { collection, addDoc, updateDoc, doc, serverTimestamp } from "firebase/firestore";
 import { useIncidents } from "@/hooks/useResponda";
 import { randomNearby, TYPE_META, SEVERITY_META, STATUS_META } from "@/lib/responda";
 import { toast } from "sonner";
@@ -11,6 +13,7 @@ import { PredictiveChatbot } from "./PredictiveChatbot";
 import { SosOrb } from "./sos/SosOrb";
 import { SosControls } from "./sos/SosControls";
 import { SosIncidentProfile } from "./sos/SosIncidentProfile";
+import ActiveSosView from "./ActiveSosView";
 
 import "./SosInterface.css";
 
@@ -136,45 +139,47 @@ export function UserSosView() {
         );
       });
 
-      const { data: created, error: insErr } = await supabase
-        .from("incidents")
-        .insert({ 
-          message: baseText || "Emergency reported.", 
-          lat, 
-          lng, 
-          type: type || "unknown",
-          reporter_label: "Civilian #" + Math.floor(Math.random() * 999) 
-        })
-        .select()
-        .single();
-      if (insErr) throw insErr;
-      setActiveId(created.id);
+      // Firebase Firestore Insertion
+      const docRef = await addDoc(collection(db, "incidents"), {
+        message: baseText || "Emergency reported.",
+        lat,
+        lng,
+        type: type || "unknown",
+        reporter_label: "Civilian #" + Math.floor(Math.random() * 999),
+        created_at: reporterTime,
+        status: "pending",
+        severity: 3
+      });
+
+      setActiveId(docRef.id);
       setMessage("");
       setImageFile(null);
       setImagePreviewUrl(null);
 
-      // AI Analysis
-      const { data: aiData, error: aiErr } = await supabase.functions.invoke("classify-incident", {
-        body: {
-          message: baseText || "Emergency reported",
-          timestamp: reporterTime,
-          location: { lat, lng },
-        },
-      });
-      if (aiErr) throw aiErr;
-
-      await supabase
-        .from("incidents")
-        .update({
-          type: aiData.type,
-          severity: aiData.severity,
-          ai_summary: aiData.summary,
-          people_affected: aiData.people_affected,
-          location_type: aiData.location_type,
-          priority_score: aiData.priority_score,
-          priority_label: aiData.priority_label,
-        })
-        .eq("id", created.id);
+      // AI Analysis (Still calling Supabase Function for now)
+      try {
+        const { data: aiData, error: aiErr } = await supabase.functions.invoke("classify-incident", {
+          body: {
+            message: baseText || "Emergency reported",
+            timestamp: reporterTime,
+            location: { lat, lng },
+          },
+        });
+        
+        if (aiData && !aiErr) {
+          await updateDoc(doc(db, "incidents", docRef.id), {
+            type: aiData.type,
+            severity: aiData.severity,
+            ai_summary: aiData.summary,
+            people_affected: aiData.people_affected,
+            location_type: aiData.location_type,
+            priority_score: aiData.priority_score,
+            priority_label: aiData.priority_label,
+          });
+        }
+      } catch (aiError) {
+        console.error("AI Analysis failed:", aiError);
+      }
 
       toast.success("Help is on the way");
     } catch (e) {
@@ -241,26 +246,37 @@ export function UserSosView() {
 
   // --- View Orchestration ---
   return (
-    <div className="sos-app-container flex flex-col items-center justify-start p-6 overflow-y-auto">
+    <div className="sos-app-container flex flex-col items-center justify-start p-6 overflow-y-auto min-h-screen">
+      {console.log("Rendering UserSosView. State:", sosState)}
       <AnimatePresence mode="wait">
-        {myIncident ? (
-          <div className="w-full flex flex-col gap-6">
+        {sosState === "ACTIVATED" ? (
+          <ActiveSosView 
+            key="active-sos-view"
+            onCancel={resetInterface} 
+            emergencyType={selectedType || "Emergency"} 
+          />
+        ) : myIncident ? (
+          <motion.div 
+            key="incident-profile-view"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="w-full flex flex-col gap-6"
+          >
             <SosIncidentProfile
-              key="result"
               incident={myIncident as any}
               typeMeta={TYPE_META}
               sevMeta={SEVERITY_META}
               statusMeta={STATUS_META}
               onReset={resetInterface}
             />
-            {/* Predictive Chatbot integrated below active incident */}
             <div className="w-full max-w-md mx-auto h-[450px]">
               <PredictiveChatbot incidents={incidents} />
             </div>
-          </div>
+          </motion.div>
         ) : (
           <motion.div 
-            key="main"
+            key="idle-view"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -362,11 +378,8 @@ export function UserSosView() {
                 )}
               </AnimatePresence>
             </div>
-<<<<<<< HEAD
-            
-=======
 
->>>>>>> 611192ad85ef98ec96a1bd1c54f3bb273c7dc1cb
+
             <SosControls
               message={message}
               onMessageChange={setMessage}

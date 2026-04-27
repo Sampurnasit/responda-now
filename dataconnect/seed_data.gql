@@ -1,0 +1,125 @@
+mutation SeedData @transaction {
+  user_insertMany(data: [
+    {
+      id: "b45a0b7c-6e1d-4f8a-9c2b-3e7f8d1c0a5b",
+      displayName: "Alice Smith",
+      email: "alice.smith@example.com",
+      role: "Commander",
+      phoneNumber: "+15551234567",
+      photoUrl: "https://example.com/alice.jpg",
+      status: "Active"
+    },
+    {
+      id: "a3f5c7e9-2d8b-4a1f-9e0c-6b3a8d5e2c1f",
+      displayName: "Bob Johnson",
+      email: "bob.johnson@example.com",
+      role: "Responder",
+      phoneNumber: "+15557654321",
+      photoUrl: "https://example.com/bob.jpg",
+      status: "Active"
+    },
+    {
+      id: "c8e1d3a5-7b9f-4d6c-8e2a-1f0b4d3c5e7a",
+      displayName: "Charlie Brown",
+      email: "charlie.brown@example.com",
+      role: "Reporter",
+      phoneNumber: "+15559876543",
+      photoUrl: "https://example.com/charlie.jpg",
+      status: "Active"
+    }
+  ])
+  incident_insertMany(data: [
+    {
+      id: "e0f1g2h3-i4j5-k6l7-m8n9-o0p1q2r3s4t5",
+      title: "Server Outage",
+      type: "Technical",
+      severity: "High",
+      status: "Open",
+      createdAt: "2023-10-27T10:00:00Z",
+      updatedAt: "2023-10-27T10:30:00Z",
+      description: "Critical production server is down.",
+      location: "Data Center A",
+      latitude: 34.0522,
+      longitude: -118.2437,
+      reporterId: "c8e1d3a5-7b9f-4d6c-8e2a-1f0b4d3c5e7a"
+    },
+    {
+      id: "f1g2h3i4-j5k6-l7m8-n9o0-p1q2r3s4t5u6",
+      title: "Network Latency",
+      type: "Technical",
+      severity: "Medium",
+      status: "Assigned",
+      createdAt: "2023-10-27T11:00:00Z",
+      updatedAt: "2023-10-27T11:15:00Z",
+      description: "Intermittent network latency affecting multiple services.",
+      location: "Office Building B",
+      latitude: 34.0522,
+      longitude: -118.2437,
+      reporterId: "c8e1d3a5-7b9f-4d6c-8e2a-1f0b4d3c5e7a"
+    }
+  ])
+  assignment_insertMany(data: [
+    {
+      userId: "a3f5c7e9-2d8b-4a1f-9e0c-6b3a8d5e2c1f",
+      incidentId: "e0f1g2h3-i4j5-k6l7-m8n9-o0p1q2r3s4t5",
+      role: "Primary Responder",
+      assignedAt: "2023-10-27T10:15:00Z"
+    },
+    {
+      userId: "b45a0b7c-6e1d-4f8a-9c2b-3e7f8d1c0a5b",
+      incidentId: "e0f1g2h3-i4j5-k6l7-m8n9-o0p1q2r3s4t5",
+      role: "Incident Commander",
+      assignedAt: "2023-10-27T10:10:00Z"
+    }
+  ])
+  incidentLog_insertMany(data: [
+    {
+      incidentId: "e0f1g2h3-i4j5-k6l7-m8n9-o0p1q2r3s4t5",
+      userId: "c8e1d3a5-7b9f-4d6c-8e2a-1f0b4d3c5e7a",
+      timestamp: "2023-10-27T10:00:00Z",
+      message: "Incident created: Server Outage in Data Center A.",
+      type: "Update"
+    },
+    {
+      incidentId: "e0f1g2h3-i4j5-k6l7-m8n9-o0p1q2r3s4t5",
+      userId: "b45a0b7c-6e1d-4f8a-9c2b-3e7f8d1c0a5b",
+      timestamp: "2023-10-27T10:10:00Z",
+      message: "Incident Commander Alice Smith assigned.",
+      type: "Assignment"
+    },
+    {
+      incidentId: "e0f1g2h3-i4j5-k6l7-m8n9-o0p1q2r3s4t5",
+      userId: "a3f5c7e9-2d8b-4a1f-9e0c-6b3a8d5e2c1f",
+      timestamp: "2023-10-27T10:15:00Z",
+      message: "Primary Responder Bob Johnson assigned.",
+      type: "Assignment"
+    },
+    {
+      incidentId: "f1g2h3i4-j5k6-l7m8-n9o0-p1q2r3s4t5u6",
+      userId: "c8e1d3a5-7b9f-4d6c-8e2a-1f0b4d3c5e7a",
+      timestamp: "2023-10-27T11:00:00Z",
+      message: "Incident created: Network Latency in Office Building B.",
+      type: "Update"
+    }
+  ])
+  resource_insertMany(data: [
+    {
+      id: "g2h3i4j5-k6l7-m8n9-o0p1-q2r3s4t5u6v7",
+      name: "Spare Server Rack",
+      type: "Hardware",
+      quantity: 5,
+      status: "Available",
+      location: "Warehouse C",
+      lastMaintenanceDate: "2023-09-15"
+    },
+    {
+      id: "h3i4j5k6-l7m8-n9o0-p1q2-r3s4t5u6v7w8",
+      name: "Network Cable Bundle",
+      type: "Consumable",
+      quantity: 100,
+      status: "Low Stock",
+      location: "Supply Closet D",
+      lastMaintenanceDate: "2023-08-01"
+    }
+  ])
+}

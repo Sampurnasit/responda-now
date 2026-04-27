@@ -1,0 +1,50 @@
+type User @table {
+  displayName: String!
+  email: String!
+  role: String!
+  phoneNumber: String
+  photoUrl: String
+  status: String
+}
+
+type Incident @table {
+  title: String!
+  type: String!
+  severity: String!
+  status: String!
+  createdAt: Timestamp!
+  updatedAt: Timestamp!
+  description: String
+  location: String
+  latitude: Float
+  longitude: Float
+  resolvedAt: Timestamp
+  reporter: User
+  incidentCommander: User
+}
+
+type Assignment @table(key: ["user", "incident"]) {
+  user: User!
+  incident: Incident!
+  role: String!
+  assignedAt: Timestamp!
+  completedAt: Timestamp
+}
+
+type Resource @table {
+  name: String!
+  type: String!
+  quantity: Int!
+  status: String!
+  location: String
+  lastMaintenanceDate: Date
+}
+
+type IncidentLog @table {
+  timestamp: Timestamp!
+  message: String!
+  type: String!
+  attachments: [String]
+  incident: Incident
+  user: User
+}

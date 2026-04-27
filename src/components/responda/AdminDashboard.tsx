@@ -13,107 +13,275 @@ import {
   LOCATION_META,
   recommendVolunteers,
 } from "@/lib/responda";
-import { supabase } from "@/integrations/supabase/client";
-import { Activity, Bot, CheckCircle2, Clock, Flame, MapPin, Radio, Sparkles, Users, Zap } from "lucide-react";
+import { db } from "@/lib/firebase";
+import { doc, updateDoc, addDoc, collection } from "firebase/firestore";
+import { Activity, Bell, Bot, CheckCircle2, Clock, Filter, Flame, MapPin, Radio, Search, Send, Sparkles, Users, Zap } from "lucide-react";
 import { toast } from "sonner";
+import { AdminAnalytics } from "./AdminAnalytics";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogHeader, 
+  DialogTitle, 
+  DialogTrigger 
+} from "@/components/ui/dialog";
 
 export function AdminDashboard() {
   const { incidents } = useIncidents();
   const { volunteers } = useVolunteers();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [rightTab, setRightTab] = useState<"detail" | "alerts" | "roster" | "predict">("detail");
+  const [adminTab, setAdminTab] = useState<"triage" | "map" | "volunteers" | "analytics">("triage");
+  
+  // New States for Command Center
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filterType, setFilterType] = useState<string>("all");
+  const [filterPriority, setFilterPriority] = useState<string>("all");
+  const [broadcastMsg, setBroadcastMsg] = useState("");
 
   const selected = selectedId ? incidents.find((i) => i.id === selectedId) ?? null : null;
   const focus = selected ? ([selected.lat, selected.lng] as [number, number]) : null;
 
-  // Stats
+  // Stats & Insights
   const active = incidents.filter((i) => i.status !== "resolved");
   const resolved = incidents.filter((i) => i.status === "resolved").length;
   const availableVols = volunteers.filter((v) => v.status === "available").length;
-  const critical = active.filter((i) => (i.priority_label === "Critical") || i.severity >= 4).length;
+  const criticalCount = active.filter((i) => (i.priority_label === "Critical") || i.severity >= 4).length;
 
-  // Sort incidents by priority score (desc), unresolved first
-  const sortedIncidents = [...incidents].sort((a, b) => {
-    const aResolved = a.status === "resolved" ? 1 : 0;
-    const bResolved = b.status === "resolved" ? 1 : 0;
-    if (aResolved !== bResolved) return aResolved - bResolved;
-    return (b.priority_score ?? 0) - (a.priority_score ?? 0);
-  });
+  const insights = useMemo(() => {
+    const list = [];
+    if (criticalCount > 0) list.push({ text: `${criticalCount} high priority incidents need immediate attention`, type: 'alert' });
+    if (active.length > 5 && availableVols < 2) list.push({ text: "Low volunteer availability. Deploy additional responders.", type: 'warning' });
+    if (active.length === 0) list.push({ text: "Operational stability confirmed. No active signals.", type: 'success' });
+    return list;
+  }, [criticalCount, active.length, availableVols]);
+
+  // Filtering Logic
+  const filteredIncidents = useMemo(() => {
+    return incidents.filter(inc => {
+      const matchesSearch = inc.message.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                           (TYPE_META[inc.type]?.label || "").toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesType = filterType === "all" || inc.type === filterType;
+      const matchesPriority = filterPriority === "all" || inc.priority_label === filterPriority;
+      return matchesSearch && matchesType && matchesPriority;
+    }).sort((a, b) => {
+      const aResolved = a.status === "resolved" ? 1 : 0;
+      const bResolved = b.status === "resolved" ? 1 : 0;
+      if (aResolved !== bResolved) return aResolved - bResolved;
+      return (b.priority_score ?? 0) - (a.priority_score ?? 0);
+    });
+  }, [incidents, searchQuery, filterType, filterPriority]);
+
+  const handleBroadcast = () => {
+    if (!broadcastMsg.trim()) return;
+    toast.success(`Broadcast sent to all zones: ${broadcastMsg.substring(0, 20)}...`);
+    setBroadcastMsg("");
+  };
 
   return (
-    <div className="grid h-[calc(100vh-3.5rem)] grid-cols-12 gap-3 p-3">
-      {/* LEFT: incident list */}
-      <aside className="col-span-3 flex min-h-0 flex-col gap-3">
-        <StatGrid active={active.length} critical={critical} resolved={resolved} vols={availableVols} />
-        <div className="panel flex min-h-0 flex-1 flex-col">
-          <div className="flex items-center justify-between border-b border-border px-4 py-2.5">
-            <div>
-              <div className="text-sm font-semibold">Active Incidents</div>
-              <div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-                {active.length} live • {resolved} resolved
+    <div className="flex h-screen flex-col bg-background">
+      {/* Admin local navigation */}
+      <div className="flex h-14 items-center justify-between border-b border-border bg-card/40 px-6 backdrop-blur-md">
+        <div className="flex items-center gap-2">
+          <Activity className="h-5 w-5 text-primary" />
+          <span className="text-sm font-black uppercase tracking-widest">Command Center</span>
+        </div>
+        <nav className="flex gap-1 rounded-lg border border-border bg-secondary/20 p-1">
+          <button 
+            onClick={() => setAdminTab("triage")}
+            className={`px-4 py-1.5 text-xs font-bold uppercase tracking-wider transition-all rounded-md ${adminTab === "triage" ? "bg-primary text-white shadow-lg" : "text-muted-foreground hover:text-white"}`}
+          >
+            Signals
+          </button>
+          <button 
+            onClick={() => setAdminTab("map")}
+            className={`px-4 py-1.5 text-xs font-bold uppercase tracking-wider transition-all rounded-md ${adminTab === "map" ? "bg-primary text-white shadow-lg" : "text-muted-foreground hover:text-white"}`}
+          >
+            Map
+          </button>
+          <button 
+            onClick={() => setAdminTab("volunteers")}
+            className={`px-4 py-1.5 text-xs font-bold uppercase tracking-wider transition-all rounded-md ${adminTab === "volunteers" ? "bg-primary text-white shadow-lg" : "text-muted-foreground hover:text-white"}`}
+          >
+            Roster
+          </button>
+          <button 
+            onClick={() => setAdminTab("analytics")}
+            className={`px-4 py-1.5 text-xs font-bold uppercase tracking-wider transition-all rounded-md ${adminTab === "analytics" ? "bg-primary text-white shadow-lg" : "text-muted-foreground hover:text-white"}`}
+          >
+            Analytics
+          </button>
+        </nav>
+        
+        <div className="flex items-center gap-4">
+           <Dialog>
+              <DialogTrigger asChild>
+                <Button variant="outline" size="sm" className="bg-white/5 border-white/10 text-white font-mono text-[10px] uppercase tracking-widest gap-2">
+                   <Radio className="h-3 w-3 text-primary" /> Broadcast
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="bg-black border-white/10 text-white">
+                <DialogHeader>
+                  <DialogTitle className="text-sm font-black uppercase tracking-widest flex items-center gap-2">
+                    <Bell className="h-4 w-4 text-primary" /> Zone Broadcast
+                  </DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4 pt-4">
+                  <Input 
+                    placeholder="Enter alert message to all responders..." 
+                    className="bg-white/5 border-white/10"
+                    value={broadcastMsg}
+                    onChange={(e) => setBroadcastMsg(e.target.value)}
+                  />
+                  <div className="grid grid-cols-2 gap-2">
+                     <Button variant="secondary" className="text-xs">Zone Alpha</Button>
+                     <Button variant="secondary" className="text-xs">Zone Beta</Button>
+                  </div>
+                  <Button onClick={handleBroadcast} className="w-full bg-primary hover:bg-primary/90 font-bold uppercase tracking-widest text-[10px]">
+                    <Send className="mr-2 h-3 w-3" /> Transmit Alert
+                  </Button>
+                </div>
+              </DialogContent>
+           </Dialog>
+
+           <div className="flex items-center gap-2 font-mono text-[10px] text-muted-foreground">
+             <div className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
+             OPS CHANNEL ACTIVE
+           </div>
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-hidden p-3">
+        {adminTab === "triage" && (
+          <div className="grid h-full grid-cols-12 gap-3 animate-in fade-in slide-in-from-bottom-2 duration-500">
+            {/* LEFT: incident list */}
+            <aside className="col-span-3 flex min-h-0 flex-col gap-3">
+              <StatGrid active={active.length} critical={criticalCount} resolved={resolved} vols={availableVols} />
+              
+              {/* Proactive AI Insights Panel */}
+              <div className="panel p-3 border-primary/20 bg-primary/5">
+                <div className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-primary mb-2">
+                   <Sparkles className="h-3 w-3" /> Tactical Insights
+                </div>
+                <div className="space-y-2">
+                   {insights.map((ins, i) => (
+                     <div key={i} className="flex items-start gap-2 text-[10px] leading-tight text-white/80">
+                        <div className={`mt-1 h-1 w-1 rounded-full shrink-0 ${ins.type === 'alert' ? 'bg-red-500' : ins.type === 'warning' ? 'bg-yellow-500' : 'bg-green-500'}`} />
+                        {ins.text}
+                     </div>
+                   ))}
+                </div>
               </div>
-            </div>
-            <span className="relative flex h-2 w-2">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75" />
-              <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
-            </span>
-          </div>
-          <div className="flex-1 overflow-y-auto p-2">
-            {incidents.length === 0 && (
-              <div className="px-4 py-8 text-center text-sm text-muted-foreground">
-                No incidents yet. Try the SOS app →
+
+              <div className="panel flex min-h-0 flex-1 flex-col">
+                {/* Search & Filters */}
+                <div className="p-3 border-b border-border space-y-2">
+                  <div className="relative">
+                    <Search className="absolute left-2 top-2.5 h-3 w-3 text-muted-foreground" />
+                    <Input 
+                      placeholder="Search signals..." 
+                      className="pl-8 h-8 text-[11px] bg-white/5 border-white/10"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <select 
+                      className="flex-1 h-7 bg-white/5 border border-white/10 rounded-md text-[10px] uppercase font-bold px-2 outline-none"
+                      value={filterType}
+                      onChange={(e) => setFilterType(e.target.value)}
+                    >
+                      <option value="all">All Types</option>
+                      {Object.entries(TYPE_META).map(([k, v]) => (
+                        <option key={k} value={k}>{v.label}</option>
+                      ))}
+                    </select>
+                    <select 
+                      className="flex-1 h-7 bg-white/5 border border-white/10 rounded-md text-[10px] uppercase font-bold px-2 outline-none"
+                      value={filterPriority}
+                      onChange={(e) => setFilterPriority(e.target.value)}
+                    >
+                      <option value="all">All Priority</option>
+                      <option value="Critical">Critical</option>
+                      <option value="High">High</option>
+                      <option value="Medium">Medium</option>
+                      <option value="Low">Low</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="flex-1 overflow-y-auto p-2">
+                  {filteredIncidents.length === 0 && (
+                    <div className="py-8 text-center text-xs text-muted-foreground">No matching signals</div>
+                  )}
+                  {filteredIncidents.map((inc) => (
+                    <IncidentCard
+                      key={inc.id}
+                      incident={inc}
+                      selected={inc.id === selectedId}
+                      onClick={() => setSelectedId(inc.id)}
+                    />
+                  ))}
+                </div>
               </div>
-            )}
-            {sortedIncidents.map((inc) => (
-              <IncidentCard
-                key={inc.id}
-                incident={inc}
-                selected={inc.id === selectedId}
-                onClick={() => setSelectedId(inc.id)}
+            </aside>
+
+            {/* CENTER: map */}
+            <main className="col-span-6 min-h-0">
+              <CrisisMap
+                incidents={incidents}
+                volunteers={volunteers}
+                focus={focus}
+                onIncidentClick={(i) => setSelectedId(i.id)}
               />
-            ))}
+            </main>
+
+            {/* RIGHT: detail panel */}
+            <aside className="col-span-3 flex min-h-0 flex-col gap-2">
+              <div className="flex gap-1 rounded-lg border border-border bg-secondary/30 p-1 font-mono text-[10px] uppercase tracking-widest">
+                <TabBtn active={rightTab === "detail"} onClick={() => setRightTab("detail")}>
+                  <Sparkles className="h-3 w-3" /> Detail
+                </TabBtn>
+                <TabBtn active={rightTab === "predict"} onClick={() => setRightTab("predict")}>
+                  <Bot className="h-3 w-3" /> AI Bot
+                </TabBtn>
+              </div>
+              <div className="min-h-0 flex-1">
+                {rightTab === "detail" && (selected ? <IncidentDetail incident={selected} /> : <EmptyDetailHint />)}
+                {rightTab === "predict" && <PredictiveChatbot incidents={incidents} />}
+              </div>
+            </aside>
           </div>
-        </div>
-      </aside>
+        )}
 
-      {/* CENTER: map */}
-      <main className="col-span-6 min-h-0">
-        <CrisisMap
-          incidents={incidents}
-          volunteers={volunteers}
-          focus={focus}
-          onIncidentClick={(i) => setSelectedId(i.id)}
-        />
-      </main>
+        {adminTab === "map" && (
+          <div className="h-full rounded-2xl overflow-hidden border border-border animate-in fade-in zoom-in-95 duration-500 shadow-2xl">
+            <CrisisMap
+              incidents={incidents}
+              volunteers={volunteers}
+              focus={focus}
+              onIncidentClick={(i) => {
+                setSelectedId(i.id);
+                setAdminTab("triage");
+              }}
+            />
+          </div>
+        )}
 
-      {/* RIGHT: detail panel */}
-      <aside className="col-span-3 flex min-h-0 flex-col gap-2">
-        <div className="flex gap-1 rounded-lg border border-border bg-secondary/30 p-1 font-mono text-[10px] uppercase tracking-widest">
-          <TabBtn active={rightTab === "detail"} onClick={() => setRightTab("detail")}>
-            <Sparkles className="h-3 w-3" /> Detail
-          </TabBtn>
-          <TabBtn active={rightTab === "alerts"} onClick={() => setRightTab("alerts")}>
-            <Radio className="h-3 w-3" /> Alerts
-          </TabBtn>
-          <TabBtn active={rightTab === "roster"} onClick={() => setRightTab("roster")}>
-            <Users className="h-3 w-3" /> Roster
-          </TabBtn>
-          <TabBtn active={rightTab === "predict"} onClick={() => setRightTab("predict")}>
-            <Bot className="h-3 w-3" /> Bot
-          </TabBtn>
-        </div>
-        <div className="min-h-0 flex-1">
-          {rightTab === "detail" &&
-            (selected ? (
-              <IncidentDetail incident={selected} />
-            ) : (
-              <EmptyDetailHint />
-            ))}
-          {rightTab === "alerts" && <AlertLogPanel />}
-          {rightTab === "roster" && <VolunteersPanel />}
-          {rightTab === "predict" && <PredictiveChatbot incidents={incidents} />}
-        </div>
-      </aside>
+        {adminTab === "volunteers" && (
+          <div className="h-full max-w-4xl mx-auto animate-in fade-in slide-in-from-right-4 duration-500">
+            <VolunteersPanel />
+          </div>
+        )}
+
+        {adminTab === "analytics" && (
+          <div className="h-full overflow-y-auto">
+            <AdminAnalytics />
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -289,11 +457,13 @@ function IncidentDetail({ incident }: { incident: Incident }) {
 
   async function assign(volId: string) {
     try {
-      await supabase
-        .from("incidents")
-        .update({ assigned_volunteer_id: volId, status: "assigned" })
-        .eq("id", incident.id);
-      await supabase.from("volunteers").update({ status: "assigned" }).eq("id", volId);
+      await updateDoc(doc(db, "incidents", incident.id), {
+        assigned_volunteer_id: volId,
+        status: "assigned"
+      });
+      await updateDoc(doc(db, "volunteers", volId), {
+        status: "assigned"
+      });
       toast.success("Volunteer dispatched");
     } catch (e) {
       toast.error("Failed to assign");
@@ -302,12 +472,13 @@ function IncidentDetail({ incident }: { incident: Incident }) {
 
   async function resolve() {
     try {
-      await supabase.from("incidents").update({ status: "resolved" }).eq("id", incident.id);
+      await updateDoc(doc(db, "incidents", incident.id), {
+        status: "resolved"
+      });
       if (incident.assigned_volunteer_id) {
-        await supabase
-          .from("volunteers")
-          .update({ status: "available" })
-          .eq("id", incident.assigned_volunteer_id);
+        await updateDoc(doc(db, "volunteers", incident.assigned_volunteer_id), {
+          status: "available"
+        });
       }
       toast.success("Incident resolved");
     } catch {
@@ -528,13 +699,107 @@ function IncidentDetail({ incident }: { incident: Incident }) {
 
 function VolunteersPanel() {
   const { volunteers } = useVolunteers();
+  const [isAdding, setIsAdding] = useState(false);
+  const [newVol, setNewVol] = useState({
+    name: "",
+    skills: "",
+    address: "",
+    lat: 22.57,
+    lng: 88.36
+  });
+
+  async function handleAdd() {
+    if (!newVol.name) return;
+    try {
+      await addDoc(collection(db, "volunteers"), {
+        ...newVol,
+        skills: newVol.skills.split(",").map(s => s.trim()),
+        status: "available",
+        avatar_color: `hsl(${Math.floor(Math.random() * 360)}, 70%, 50%)`,
+        last_active: new Date().toISOString()
+      });
+      toast.success("Volunteer added to roster");
+      setIsAdding(false);
+      setNewVol({ name: "", skills: "", address: "", lat: 22.57, lng: 88.36 });
+    } catch (e) {
+      toast.error("Failed to add volunteer");
+    }
+  }
+
   return (
     <div className="panel flex h-full min-h-0 flex-col">
-      <div className="border-b border-border px-4 py-2.5">
-        <div className="text-sm font-semibold">Volunteer Roster</div>
-        <div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-          Click an incident to view recommendations
+      <div className="border-b border-border px-4 py-2.5 flex items-center justify-between">
+        <div>
+          <div className="text-sm font-semibold">Volunteer Roster</div>
+          <div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+            {volunteers.length} active responders
+          </div>
         </div>
+        
+        <Dialog open={isAdding} onOpenChange={setIsAdding}>
+          <DialogTrigger asChild>
+            <Button size="sm" className="bg-accent text-accent-foreground font-bold text-[10px] uppercase tracking-widest">
+              + Add Volunteer
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="bg-black border-white/10 text-white">
+            <DialogHeader>
+              <DialogTitle className="text-sm font-black uppercase tracking-widest">Enroll New Volunteer</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 pt-4">
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold uppercase text-muted-foreground">Full Name</label>
+                <Input 
+                  value={newVol.name}
+                  onChange={e => setNewVol({...newVol, name: e.target.value})}
+                  className="bg-white/5 border-white/10"
+                  placeholder="John Doe"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold uppercase text-muted-foreground">Physical Address</label>
+                <Input 
+                  value={newVol.address}
+                  onChange={e => setNewVol({...newVol, address: e.target.value})}
+                  className="bg-white/5 border-white/10"
+                  placeholder="123 Rescue St, Sector 4"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold uppercase text-muted-foreground">Skills (comma separated)</label>
+                <Input 
+                  value={newVol.skills}
+                  onChange={e => setNewVol({...newVol, skills: e.target.value})}
+                  className="bg-white/5 border-white/10"
+                  placeholder="Medical, Search & Rescue, Fire"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold uppercase text-muted-foreground">Latitude</label>
+                  <Input 
+                    type="number"
+                    value={newVol.lat}
+                    onChange={e => setNewVol({...newVol, lat: parseFloat(e.target.value)})}
+                    className="bg-white/5 border-white/10"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold uppercase text-muted-foreground">Longitude</label>
+                  <Input 
+                    type="number"
+                    value={newVol.lng}
+                    onChange={e => setNewVol({...newVol, lng: parseFloat(e.target.value)})}
+                    className="bg-white/5 border-white/10"
+                  />
+                </div>
+              </div>
+              <Button onClick={handleAdd} className="w-full bg-accent hover:bg-accent/90 text-accent-foreground font-black uppercase tracking-widest text-[10px] h-12">
+                Authorize & Enroll
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
       <div className="flex-1 space-y-2 overflow-y-auto p-3">
         {volunteers.map((v) => (
@@ -552,6 +817,9 @@ function VolunteersPanel() {
             </span>
             <div className="min-w-0 flex-1">
               <div className="text-sm font-semibold">{v.name}</div>
+              <div className="font-mono text-[9px] text-muted-foreground truncate opacity-70">
+                {v.address || "No address provided"}
+              </div>
               <div className="font-mono text-[10px] text-muted-foreground">
                 {v.skills.join(" • ")}
               </div>

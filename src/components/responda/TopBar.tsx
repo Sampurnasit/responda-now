@@ -3,15 +3,17 @@ import { Activity, Radio } from "lucide-react";
 export function TopBar({
   view,
   setView,
+  userRole,
 }: {
   view: "user" | "admin" | "volunteer";
   setView: (v: "user" | "admin" | "volunteer") => void;
+  userRole?: string;
 }) {
-  const tabs: Array<{ id: typeof view; label: string }> = [
-    { id: "user", label: "SOS App" },
-    { id: "admin", label: "Command Center" },
-    { id: "volunteer", label: "Volunteer" },
-  ];
+  const tabs = [
+    { id: "user", label: "SOS App", roles: ["user", "admin", "volunteer"] },
+    { id: "admin", label: "Command Center", roles: ["admin"] },
+    { id: "volunteer", label: "Volunteer", roles: ["volunteer", "admin"] },
+  ].filter(t => !userRole || t.roles.includes(userRole));
 
   return (
     <header className="border-b border-border bg-card/60 backdrop-blur-md">

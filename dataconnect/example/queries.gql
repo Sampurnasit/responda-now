@@ -1,0 +1,104 @@
+mutation CreateIncident($title: String!, $type: String!, $severity: String!, $status: String!, $description: String, $location: String, $latitude: Float, $longitude: Float) @auth(level: USER, insecureReason: "Creating an incident is a core feature for any logged-in user.") {
+  incident_insert(data: {
+    title: $title,
+    type: $type,
+    severity: $severity,
+    status: $status,
+    createdAt_expr: "request.time",
+    updatedAt_expr: "request.time",
+    description: $description,
+    location: $location,
+    latitude: $latitude,
+    longitude: $longitude
+  }) {
+    id
+  }
+}
+
+query GetMyIncidents @auth(level: USER, insecureReason: "Listing incidents is a core feature for any logged-in user.") {
+  incidents(where: {
+    _or: [
+      {reporter: {id_expr: "auth.uid"}},
+      {incidentCommander: {id_expr: "auth.uid"}},
+      {assignments_on_incident: {exist: {user: {id_expr: "auth.uid"}}}}
+    ]
+  }, orderBy: [{createdAt: DESC}]) {
+    id
+    title
+    type
+    severity
+    status
+    createdAt
+    reporter {
+      displayName
+    }
+    incidentCommander {
+      displayName
+    }
+    assignments_on_incident {
+      user {
+        displayName
+      }
+      role
+    }
+  }
+}
+
+mutation AddIncidentLog($incidentId: UUID!, $message: String!, $type: String!, $attachments: [String]) @auth(level: USER, insecureReason: "Adding a log to an incident is a core feature for any logged-in user.") {
+  incidentLog_insert(data: {
+    incidentId: $incidentId,
+    message: $message,
+    type: $type,
+    timestamp_expr: "request.time",
+    userId_expr: "auth.uid",
+    attachments: $attachments
+  }) {
+    id
+  }
+}
+
+query GetIncidentDetails($incidentId: UUID!) @auth(level: USER, insecureReason: "Viewing incident details is a core feature for any logged-in user.") {
+  incident(id: $incidentId) {
+    id
+    title
+    type
+    severity
+    status
+    createdAt
+    updatedAt
+    description
+    location
+    latitude
+    longitude
+    resolvedAt
+    reporter {
+      id
+      displayName
+      email
+    }
+    incidentCommander {
+      id
+      displayName
+      email
+    }
+    assignments_on_incident {
+      user {
+        id
+        displayName
+      }
+      role
+      assignedAt
+      completedAt
+    }
+    incidentLogs_on_incident(orderBy: [{timestamp: ASC}]) {
+      id
+      timestamp
+      message
+      type
+      user {
+        displayName
+      }
+      attachments
+    }
+  }
+}
